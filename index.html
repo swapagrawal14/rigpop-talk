@@ -116,6 +116,9 @@ footer a{color:var(--ink)}
     <div style="margin-top:10px"><label for="size">Character size</label><input id="size" type="range" min="50" max="130" value="92"></div>
     <div><label for="sens">Mouth sensitivity</label><input id="sens" type="range" min="1" max="10" value="5"></div>
     <div><label for="bounce">Head bounce</label><input id="bounce" type="range" min="0" max="10" value="5"></div>
+    <div id="mouthAdj" hidden><label for="mSize">👄 Mouth size (your doodle)</label><input id="mSize" type="range" min="25" max="160" value="100">
+      <label for="mY">↕ Mouth up / down</label><input id="mY" type="range" min="-40" max="40" value="0">
+      <label for="mX">↔ Mouth left / right</label><input id="mX" type="range" min="-40" max="40" value="0"></div>
     <label><input type="checkbox" id="gest" checked> 🙌 Hand gestures</label>
     <div style="margin-top:10px"><label>🎵 Background music</label>
       <div class="row"><label class="btn" for="musicFile" style="font-size:13px;padding:6px 10px">🎵 Add music</label><input id="musicFile" type="file" accept="audio/*,video/*" hidden>
@@ -483,7 +486,7 @@ rigCv.onpointerdown=e=>{if(!rig)return;const p=rp(e);
 rigCv.onpointermove=e=>{if(!rig||!rig.drag)return;const p=rp(e),a=rig.start;rig.drag={x:Math.min(a.x,p.x),y:Math.min(a.y,p.y),w:Math.abs(p.x-a.x),h:Math.abs(p.y-a.y)};rigDraw();};
 rigCv.onpointerup=()=>{if(!rig||!rig.drag)return;const m=rig.drag;rig.drag=null;
   if(m.w>8&&m.h>4)rig.mouth=m;
-  else{const w=rigCv.width*0.14;rig.mouth={x:rig.start.x-w/2,y:rig.start.y-w*0.3,w,h:w*0.6};}
+  else{const w=rigCv.width*0.09;rig.mouth={x:rig.start.x-w/2,y:rig.start.y-w*0.3,w,h:w*0.6};}
   rig.step="eyes";rigDraw();};
 $("rigBack").onclick=()=>{if(!rig)return;rig.mouth=null;rig.eyes=[];rig.shoulders=[];rig.step="mouth";rigDraw();};
 $("rigSkip").onclick=()=>{rig.step=rig.step==="eyes"?"arms":"done";if(rig.step==="done")rig.shoulders=[];rigDraw();};
@@ -521,11 +524,15 @@ function registerDoodle(data,select){const i=new Image();i.onload=()=>{
   imgs[k]={base:c};const pz=data.poses||{};if(Object.keys(pz).length){imgs[k].poses={};CHARS[k].poses=Object.keys(pz);
     for(const p in pz){const pi=new Image();pi.onload=()=>{const pc=document.createElement("canvas");pc.width=c.width;pc.height=c.height;pc.getContext("2d").drawImage(pi,0,0,c.width,c.height);imgs[k].poses[p]=pc;};pi.src=pz[p];}}
   const box=$("chars"),add=box.querySelector(".add"),b=document.createElement("button");b.innerHTML=`<img src="${data.img}" alt="">${data.name}`;
-  b.onclick=()=>{cur=k;[...box.children].forEach(x=>x.classList.remove("on"));b.classList.add("on")};box.insertBefore(b,add);
+  CHARS[k].custom.ms=data.ms||100;CHARS[k].custom.my=data.my||0;CHARS[k].custom.mx=data.mx||0;CHARS[k].data=data;
+  b.onclick=()=>{cur=k;[...box.children].forEach(x=>x.classList.remove("on"));b.classList.add("on");syncMouthAdj();};box.insertBefore(b,add);
   fillDuetSelects();if(select)b.click();if(select)status(`${data.name} is ready to talk! Add a voice 🎙️`);};i.src=data.img;}
-function drawCustom(c,shape,blinking){const R=c.custom,m=R.mouth,cx=m.x+m.w/2,cy=m.y+m.h/2,lw=Math.max(2,m.w*0.06);
+let mouthPeek=0;
+function drawCustom(c,shape,blinking){const R=c.custom,m0=R.mouth,k=(R.ms||100)/100,m={w:m0.w*k,h:m0.h*k};
+  const cx=m0.x+m0.w/2+(R.mx||0)/100*m0.w,cy=m0.y+m0.h/2+(R.my||0)/100*m0.h,lw=Math.max(2,m.w*0.06);
+  if(shape==="rest"&&performance.now()<mouthPeek&&c===CHARS[cur])shape="A";
   if(shape!=="rest"){
-    ctx.save();ctx.fillStyle=R.skin;ctx.beginPath();ctx.ellipse(cx,cy,m.w*0.58,m.h*0.62,0,0,7);ctx.fill();
+    ctx.save();ctx.fillStyle=R.skin;ctx.beginPath();ctx.ellipse(m0.x+m0.w/2,m0.y+m0.h/2,m0.w*0.58,m0.h*0.62,0,0,7);ctx.fill();ctx.beginPath();ctx.ellipse(cx,cy,m.w*0.58,m.h*0.62,0,0,7);ctx.fill();
     const [rw,rh]=shape==="A"?[m.w*0.42,m.h*0.55]:shape==="O"?[m.w*0.22,m.h*0.42]:[m.w*0.48,m.h*0.26];
     ctx.beginPath();ctx.ellipse(cx,cy,rw,rh,0,0,7);ctx.fillStyle="#4a1426";ctx.fill();ctx.save();ctx.clip();
     if(shape!=="O"){ctx.fillStyle="#fff";ctx.fillRect(cx-rw,cy-rh,rw*2,rh*(shape==="E"?0.7:0.38));}
@@ -713,6 +720,13 @@ function drawChar(k,cx,s,avail,t,lvl,shape,blinking,idx,gs){
   if(blinking&&im.blink&&P.blink){const p=P.blink;ctx.drawImage(im.blink,p.x,p.y,p.w,p.h);}
   ctx.restore();
 }
+// --- mouth size / position for uploaded doodles ---
+function syncMouthAdj(){const c=CHARS[cur],on=!!(c&&c.custom);$("mouthAdj").hidden=!on;if(on){$("mSize").value=c.custom.ms;$("mY").value=c.custom.my;$("mX").value=c.custom.mx;}}
+document.addEventListener("click",e=>{if(e.target.closest&&e.target.closest("#chars"))setTimeout(syncMouthAdj,0);});
+for(const [id,key] of [["mSize","ms"],["mY","my"],["mX","mx"]])$(id).oninput=()=>{const c=CHARS[cur];if(!c||!c.custom)return;
+  c.custom[key]=+$(id).value;mouthPeek=performance.now()+1500;
+  try{const all=JSON.parse(localStorage.getItem("rigpopDoodles")||"[]");const d=c.data;const e=all.find(x=>x.img===d.img&&x.name===d.name);if(e){e[key]=c.custom[key];localStorage.setItem("rigpopDoodles",JSON.stringify(all));}d[key]=c.custom[key];}catch(err){}};
+
 // --- bendy doodle arms for uploaded characters ---
 const ARM_POSES={wave:1,point:1,open:1,thumbs:1};
 // per pose: which arms (L = viewer-left, R = viewer-right) -> [elbow, hand] offsets in shoulder-width units (x outward-positive), hand type

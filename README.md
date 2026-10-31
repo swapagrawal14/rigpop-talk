@@ -27,6 +27,8 @@ Tap **Make captions** and Whisper (running in your browser through transformers.
 
 **Dr. Swapnil** comes with four hand poses: wave, point up, open palms, and thumbs up. While she talks, she waves hello at the start and gestures every few seconds. When captions are on, words trigger matching gestures ("hello" waves, "idea" points, "great"/"badhiya" gives a thumbs up, "why"/"kyun" opens the palms). Switch it off in Style.
 
+**Mouth too big or off-centre?** Pick your doodle and use the Mouth size, up/down, and left/right sliders in Style. The mouth pops open while you drag so you can see it. Settings are saved with the doodle.
+
 **Any uploaded doodle can gesture too:**
 - **Bendy arms**: in the doodle setup, tap the left and right shoulder. The app draws rubber-hose cartoon arms in your doodle's skin, sleeve, and ink colours.
 - **Pose pictures**: open "Add pose pictures," copy the AI prompt, make wave, point, open-palm, and thumbs-up versions of your picture in ChatGPT or Gemini, and upload them. The app swaps them in while your doodle talks.
