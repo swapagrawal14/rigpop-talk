@@ -11,6 +11,10 @@
 3. **Style it:** background colour or your own image, dots or stars pattern, an optional title sticker, 9:16 / 1:1 / 16:9.
 4. **Export:** you get a proper MP4 with the audio baked in, rendered faster than real time, with the correct length in any gallery app.
 
+## Bring your own doodle 🖍️
+
+Tap **＋ Your doodle** and upload any character drawing. Rigpop Talk removes a plain background, then you drag a box over the mouth and tap the two eyes. It paints talking mouth shapes in the doodle's own skin and ink colours, and adds blinks. Your last four doodles are remembered in this browser.
+
 ## Auto captions ✍️
 
 Tap **Make captions** and Whisper (running in your browser through transformers.js) turns the voice into bouncy, word-highlighted subtitles. Pick Auto, Hindi, English, or Hinglish (Hindi written in Roman letters). Every line is editable before export. The first run downloads a ~75 MB model, which the browser then caches. No audio leaves your device.

@@ -43,6 +43,9 @@ canvas{max-width:100%;max-height:72vh;border:3px solid var(--ink);border-radius:
 small{opacity:.75}
 .mode{display:flex;gap:6px;margin-bottom:10px}.mode button{flex:1}.mode button.on{background:var(--pink);color:#fff}
 .caps{max-height:220px;overflow:auto;margin-top:8px}.caps input{margin-bottom:5px;padding:6px;font-size:14px}
+#rig{position:fixed;inset:0;background:rgba(31,42,156,.55);display:flex;align-items:center;justify-content:center;z-index:9;padding:12px}
+#rig .card{max-width:520px;width:100%;margin:0;text-align:center}#rigCv{max-width:100%;max-height:60vh;border:3px solid var(--ink);border-radius:12px;touch-action:none;background:repeating-conic-gradient(#eee 0 25%,#fff 0 50%) 0 0/20px 20px}
+.chars button.add{background:var(--yellow);font-size:13px}.chars button.add b{display:flex;height:80px;align-items:center;justify-content:center;font-size:38px}
 .lines{list-style:none;padding:0;margin:8px 0 0}.lines li{display:flex;align-items:center;gap:6px;border:2px dashed var(--ink);border-radius:10px;padding:5px 8px;margin-bottom:5px;font-weight:bold;font-size:14px}
 .lines li span{flex:1}.lines li button{border:2px solid var(--ink);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);font-weight:bold}
 footer{text-align:center;padding:20px;font-weight:bold}
@@ -128,6 +131,19 @@ footer a{color:var(--ink)}
   <div id="status">Pick a character and add a voice to begin ✨</div>
 </section>
 </main>
+<div id="rig" hidden><div class="card">
+  <h2 id="rigTitle">Drag a box over the mouth 👄</h2>
+  <canvas id="rigCv"></canvas>
+  <div class="row" style="justify-content:center;margin-top:8px">
+    <label><input type="checkbox" id="rigBg" checked> Remove plain background</label>
+    <input id="rigName" type="text" placeholder="Name your character" style="max-width:200px">
+  </div>
+  <div class="row" style="justify-content:center;margin-top:6px">
+    <button class="btn" id="rigBack">↺ Redo</button><button class="btn yellow" id="rigSkip" hidden>Skip eyes</button>
+    <button class="btn pink" id="rigDone" disabled>✅ Done</button><button class="btn" id="rigCancel">✕</button>
+  </div>
+</div></div>
+<input id="doodleFile" type="file" accept="image/*" hidden>
 <footer>Made with 🌷 by <a href="https://github.com/swapagrawal14" target="_blank" rel="noopener">Swapnil Agrawal</a> · sibling of <a href="https://rigpop-one.vercel.app/" target="_blank" rel="noopener">Rigpop</a> · MIT</footer>
 
 <script>
@@ -354,6 +370,73 @@ async function exportOfflineInner(){
 function stopRecording(){recording=false;setTimeout(()=>mr&&mr.state!=="inactive"&&mr.stop(),250);}
 function status(t){$("status").textContent=t}
 
+// --- your own doodle ---
+let rig=null;const rigCv=$("rigCv"),rctx=rigCv.getContext("2d");
+function addDoodleButton(){const box=$("chars");const b=document.createElement("button");b.className="add";b.innerHTML="<b>＋</b>Your doodle";
+  b.onclick=()=>$("doodleFile").click();box.appendChild(b);}
+$("doodleFile").onchange=e=>{const f=e.target.files[0];e.target.value="";if(!f)return;const i=new Image();
+  i.onload=()=>{const sc=Math.min(1,900/Math.max(i.width,i.height));const c=document.createElement("canvas");c.width=Math.round(i.width*sc);c.height=Math.round(i.height*sc);
+    c.getContext("2d").drawImage(i,0,0,c.width,c.height);rig={src:c,img:null,step:"mouth",mouth:null,eyes:[],drag:null};
+    $("rigName").value="";$("rig").hidden=false;rigProcess();};i.src=URL.createObjectURL(f);};
+$("rigBg").onchange=()=>rig&&rigProcess();
+function rigProcess(){const src=rig.src,W=src.width,H=src.height,c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");x.drawImage(src,0,0);
+  if($("rigBg").checked){const im=x.getImageData(0,0,W,H),d=im.data;
+    const corners=[[0,0],[W-1,0],[0,H-1],[W-1,H-1]].map(([a,b])=>{const k=(b*W+a)*4;return[d[k],d[k+1],d[k+2],d[k+3]]});
+    const ref=corners[0],near=(k,r,t)=>Math.abs(d[k]-r[0])+Math.abs(d[k+1]-r[1])+Math.abs(d[k+2]-r[2])<t;
+    const same=corners.every(cc=>Math.abs(cc[0]-ref[0])+Math.abs(cc[1]-ref[1])+Math.abs(cc[2]-ref[2])<60)&&ref[3]>200;
+    if(same){const seen=new Uint8Array(W*H),st=[];for(const [a,b] of [[0,0],[W-1,0],[0,H-1],[W-1,H-1]])st.push(b*W+a);
+      while(st.length){const p=st.pop();if(seen[p])continue;seen[p]=1;const k=p*4;if(!near(k,ref,70))continue;d[k+3]=0;
+        const px=p%W,py=(p/W)|0;if(px>0)st.push(p-1);if(px<W-1)st.push(p+1);if(py>0)st.push(p-W);if(py<H-1)st.push(p+W);}
+      x.putImageData(im,0,0);}}
+  rig.img=c;rigCv.width=W;rigCv.height=H;rigDraw();}
+function rigDraw(){if(!rig)return;rctx.clearRect(0,0,rigCv.width,rigCv.height);rctx.drawImage(rig.img,0,0);
+  rctx.lineWidth=Math.max(3,rigCv.width/150);rctx.strokeStyle="#ff5fa2";rctx.setLineDash([10,6]);
+  const m=rig.drag||rig.mouth;if(m)rctx.strokeRect(m.x,m.y,m.w,m.h);rctx.setLineDash([]);
+  rctx.fillStyle="#ff5fa2";for(const e of rig.eyes){rctx.beginPath();rctx.arc(e.x,e.y,rigCv.width/60,0,7);rctx.fill();}
+  $("rigTitle").textContent=rig.step==="mouth"?"Drag a box over the mouth 👄":rig.step==="eyes"?`Tap the middle of each eye 👀 (${rig.eyes.length}/2)`:"All set! Name it and tap Done ✨";
+  $("rigSkip").hidden=rig.step!=="eyes";$("rigDone").disabled=rig.step!=="done";}
+const rp=e=>{const r=rigCv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*rigCv.width,y:(e.clientY-r.top)/r.height*rigCv.height}};
+rigCv.onpointerdown=e=>{if(!rig)return;const p=rp(e);
+  if(rig.step==="mouth"){rig.start=p;rig.drag={x:p.x,y:p.y,w:1,h:1};rigCv.setPointerCapture(e.pointerId);}
+  else if(rig.step==="eyes"){rig.eyes.push(p);if(rig.eyes.length===2)rig.step="done";}rigDraw();};
+rigCv.onpointermove=e=>{if(!rig||!rig.drag)return;const p=rp(e),a=rig.start;rig.drag={x:Math.min(a.x,p.x),y:Math.min(a.y,p.y),w:Math.abs(p.x-a.x),h:Math.abs(p.y-a.y)};rigDraw();};
+rigCv.onpointerup=()=>{if(!rig||!rig.drag)return;const m=rig.drag;rig.drag=null;
+  if(m.w>8&&m.h>4){rig.mouth=m;rig.step="eyes";}rigDraw();};
+$("rigBack").onclick=()=>{if(!rig)return;rig.mouth=null;rig.eyes=[];rig.step="mouth";rigDraw();};
+$("rigSkip").onclick=()=>{rig.step="done";rigDraw();};
+$("rigCancel").onclick=()=>{$("rig").hidden=true;rig=null;};
+$("rigDone").onclick=()=>{const name=$("rigName").value.trim()||"My doodle";
+  const data={name,img:rig.img.toDataURL("image/png"),mouth:rig.mouth,eyes:rig.eyes};
+  $("rig").hidden=true;rig=null;registerDoodle(data,true);
+  try{const all=JSON.parse(localStorage.getItem("rigpopDoodles")||"[]");all.push(data);localStorage.setItem("rigpopDoodles",JSON.stringify(all.slice(-4)));}catch(e){status("Character added (too big to remember after refresh)");}};
+function sampleRig(img,m,eyes){const W=img.width,H=img.height,x=img.getContext("2d"),d=x.getImageData(0,0,W,H).data;
+  const px=(a,b)=>{a=Math.max(0,Math.min(W-1,a|0));b=Math.max(0,Math.min(H-1,b|0));const k=(b*W+a)*4;return[d[k],d[k+1],d[k+2],d[k+3]]};
+  const ring=[];for(let i=0;i<24;i++){const a=i/24*Math.PI*2;const p=px(m.x+m.w/2+Math.cos(a)*m.w*0.75,m.y+m.h/2+Math.sin(a)*m.h*0.95);if(p[3]>200)ring.push(p);}
+  const med=arr=>{if(!arr.length)return[230,180,150];const k=i=>arr.map(p=>p[i]).sort((a,b)=>a-b)[arr.length>>1];return[k(0),k(1),k(2)]};
+  const skin=med(ring);let dark=[31,42,156],dv=999;
+  for(let yy=m.y;yy<m.y+m.h;yy+=2)for(let xx=m.x;xx<m.x+m.w;xx+=2){const p=px(xx,yy);const v=p[0]+p[1]+p[2];if(p[3]>200&&v<dv){dv=v;dark=p;}}
+  const er=eyes.length===2?Math.hypot(eyes[0].x-eyes[1].x,eyes[0].y-eyes[1].y)*0.24:0;
+  const lids=eyes.map(e=>med([px(e.x,e.y-er*1.5),px(e.x-er*1.3,e.y-er*1.2),px(e.x+er*1.3,e.y-er*1.2)].filter(p=>p[3]>200)));
+  const rgb=c=>`rgb(${c[0]},${c[1]},${c[2]})`;return{skin:rgb(skin),ink:rgb(dark.slice(0,3)),er,lids:lids.map(rgb)};}
+let doodleN=0;
+function registerDoodle(data,select){const i=new Image();i.onload=()=>{
+  const c=document.createElement("canvas");c.width=i.width;c.height=i.height;c.getContext("2d").drawImage(i,0,0);
+  const k="doodle"+(++doodleN);CHARS[k]={name:data.name,w:c.width,h:c.height,patches:{},custom:Object.assign({mouth:data.mouth,eyes:data.eyes},sampleRig(c,data.mouth,data.eyes))};
+  imgs[k]={base:c};
+  const box=$("chars"),add=box.querySelector(".add"),b=document.createElement("button");b.innerHTML=`<img src="${data.img}" alt="">${data.name}`;
+  b.onclick=()=>{cur=k;[...box.children].forEach(x=>x.classList.remove("on"));b.classList.add("on")};box.insertBefore(b,add);
+  fillDuetSelects();if(select)b.click();if(select)status(`${data.name} is ready to talk! Add a voice 🎙️`);};i.src=data.img;}
+function drawCustom(c,shape,blinking){const R=c.custom,m=R.mouth,cx=m.x+m.w/2,cy=m.y+m.h/2,lw=Math.max(2,m.w*0.06);
+  if(shape!=="rest"){
+    ctx.save();ctx.fillStyle=R.skin;ctx.beginPath();ctx.ellipse(cx,cy,m.w*0.58,m.h*0.62,0,0,7);ctx.fill();
+    const [rw,rh]=shape==="A"?[m.w*0.42,m.h*0.55]:shape==="O"?[m.w*0.22,m.h*0.42]:[m.w*0.48,m.h*0.26];
+    ctx.beginPath();ctx.ellipse(cx,cy,rw,rh,0,0,7);ctx.fillStyle="#4a1426";ctx.fill();ctx.save();ctx.clip();
+    if(shape!=="O"){ctx.fillStyle="#fff";ctx.fillRect(cx-rw,cy-rh,rw*2,rh*(shape==="E"?0.7:0.38));}
+    if(shape!=="E"){ctx.fillStyle="#ef6f8f";ctx.beginPath();ctx.ellipse(cx,cy+rh*0.75,rw*0.7,rh*0.5,0,0,7);ctx.fill();}
+    ctx.restore();ctx.lineWidth=lw;ctx.strokeStyle=R.ink;ctx.beginPath();ctx.ellipse(cx,cy,rw,rh,0,0,7);ctx.stroke();ctx.restore();}
+  if(blinking&&R.er){R.eyes.forEach((e,i)=>{ctx.save();ctx.fillStyle=R.lids[i]||R.skin;ctx.beginPath();ctx.ellipse(e.x,e.y,R.er*1.15,R.er*1.05,0,0,7);ctx.fill();
+    ctx.lineWidth=Math.max(2,R.er*0.18);ctx.strokeStyle=R.ink;ctx.lineCap="round";ctx.beginPath();ctx.arc(e.x,e.y-R.er*0.4,R.er*1.0,0.2*Math.PI,0.8*Math.PI);ctx.stroke();ctx.restore();});}}
+
 // --- captions (Whisper in the browser via transformers.js) ---
 let captions=[],asr=null;
 async function getASR(){
@@ -523,12 +606,13 @@ function drawChar(k,cx,s,avail,t,lvl,shape,blinking,idx){
   ctx.save();ctx.translate(cx,bottom);ctx.rotate(rot);ctx.scale(sc,sc);ctx.translate(-c.w/2,-c.h);
   ctx.drawImage(im.base,0,0);
   const P=c.patches;
+  if(c.custom)drawCustom(c,shape,blinking);
   if(shape!=="rest"&&im[shape]&&P[shape]){const p=P[shape];ctx.drawImage(im[shape],p.x,p.y,p.w,p.h);}
   if(blinking&&im.blink&&P.blink){const p=P.blink;ctx.drawImage(im.blink,p.x,p.y,p.w,p.h);}
   ctx.restore();
 }
 function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
-loadChars().then(()=>{fillDuetSelects();requestAnimationFrame(frame);});
+loadChars().then(()=>{addDoodleButton();try{JSON.parse(localStorage.getItem("rigpopDoodles")||"[]").forEach(d=>registerDoodle(d,false));}catch(e){}fillDuetSelects();requestAnimationFrame(frame);});
 </script>
 </body>
 </html>
