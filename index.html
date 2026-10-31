@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rigpop Talk — make doodles talk</title>
+<meta name="description" content="Drop in a voice note and watch a doodle character lip-sync it. Export a 9:16 reel with sound. Free, open source, runs in your browser.">
+<link rel="icon" href="characters/froggo_base.png">
+<style>
+:root{--ink:#1f2a9c;--pink:#ff5fa2;--yellow:#ffd94a;--mint:#8fe3c0;--sky:#bfe3f2;--peach:#ffd2b0;--paper:#fffaf0}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Trebuchet MS",system-ui,sans-serif;background:var(--paper);color:var(--ink);
+background-image:radial-gradient(var(--ink) 1px,transparent 1.2px);background-size:22px 22px}
+header{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--yellow);border-bottom:3px solid var(--ink)}
+header h1{margin:0;font-size:26px;letter-spacing:-.5px}
+header h1 span{background:var(--pink);color:#fff;padding:0 8px;border:3px solid var(--ink);border-radius:10px;box-shadow:3px 3px 0 var(--ink);display:inline-block;transform:rotate(-3deg)}
+header p{margin:0;font-weight:bold;opacity:.85}
+header a{margin-left:auto;color:var(--ink);font-weight:bold}
+main{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:20px;padding:20px;max-width:1200px;margin:auto}
+@media(max-width:800px){main{grid-template-columns:1fr}}
+.card{background:#fff;border:3px solid var(--ink);border-radius:16px;box-shadow:5px 5px 0 var(--ink);padding:14px;margin-bottom:16px}
+.card h2{margin:0 0 10px;font-size:17px}
+.chars{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.chars button{background:var(--sky);border:3px solid var(--ink);border-radius:12px;padding:4px;cursor:pointer;font-weight:bold;color:var(--ink)}
+.chars button img{width:100%;height:80px;object-fit:contain;display:block}
+.chars button.on{background:var(--pink);color:#fff;transform:translateY(-2px);box-shadow:3px 3px 0 var(--ink)}
+.btn{display:inline-flex;align-items:center;gap:6px;background:var(--mint);border:3px solid var(--ink);border-radius:12px;padding:9px 13px;font-weight:bold;font-size:15px;cursor:pointer;color:var(--ink);box-shadow:3px 3px 0 var(--ink);margin:3px 4px 3px 0}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.btn.pink{background:var(--pink);color:#fff}.btn.yellow{background:var(--yellow)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.sw{width:30px;height:30px;border-radius:50%;border:3px solid var(--ink);cursor:pointer}
+.sw.on{outline:3px dashed var(--pink);outline-offset:2px}
+label{font-weight:bold;font-size:14px}
+input[type=text]{width:100%;padding:9px;border:3px solid var(--ink);border-radius:10px;font:inherit;color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--pink)}
+select{padding:7px;border:3px solid var(--ink);border-radius:10px;font:inherit;color:var(--ink);background:#fff}
+.stage{display:flex;flex-direction:column;align-items:center}
+canvas{max-width:100%;max-height:72vh;border:3px solid var(--ink);border-radius:16px;box-shadow:6px 6px 0 var(--ink);background:#fff}
+#status{margin-top:12px;font-weight:bold;min-height:22px;text-align:center}
+.meter{height:12px;width:100%;border:3px solid var(--ink);border-radius:8px;overflow:hidden;background:#fff;margin-top:8px}
+.meter i{display:block;height:100%;width:0;background:var(--pink);transition:width .05s}
+small{opacity:.75}
+footer{text-align:center;padding:20px;font-weight:bold}
+footer a{color:var(--ink)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Rigpop <span>Talk</span></h1>
+  <p>make doodles talk 🐸</p>
+  <a href="https://github.com/swapagrawal14/rigpop-talk" target="_blank" rel="noopener">GitHub ★</a>
+</header>
+<main>
+<section>
+  <div class="card">
+    <h2>1 · Pick a character</h2>
+    <div class="chars" id="chars"></div>
+  </div>
+  <div class="card">
+    <h2>2 · Add a voice</h2>
+    <div class="row">
+      <label class="btn yellow" for="file">📁 Upload audio</label>
+      <input id="file" type="file" accept="audio/*,video/*" hidden>
+      <button class="btn" id="rec">🎙️ Record</button>
+      <button class="btn" id="live">🔴 Live mic</button>
+    </div>
+    <div id="audioName"><small>mp3, wav, m4a, ogg… or a video file (we use its sound).</small></div>
+    <div class="meter"><i id="meter"></i></div>
+  </div>
+  <div class="card">
+    <h2>3 · Style it</h2>
+    <label>Background</label>
+    <div class="row" id="bgs" style="margin:6px 0 10px"></div>
+    <div class="row" style="margin-bottom:10px">
+      <label class="btn" for="bgfile" style="font-size:13px;padding:6px 10px">🖼️ Your own background</label>
+      <input id="bgfile" type="file" accept="image/*" hidden>
+      <select id="pattern"><option value="dots">Dots</option><option value="stars">Stars</option><option value="none">Plain</option></select>
+    </div>
+    <label for="title">Title on top (optional)</label>
+    <input id="title" type="text" placeholder="e.g. 3 AI tools nobody talks about">
+    <div style="margin-top:10px"><label>Format</label>
+      <select id="format"><option value="9:16">9:16 Reel</option><option value="1:1">1:1 Post</option><option value="16:9">16:9 YouTube</option></select></div>
+    <div style="margin-top:10px"><label for="size">Character size</label><input id="size" type="range" min="50" max="130" value="92"></div>
+    <div><label for="sens">Mouth sensitivity</label><input id="sens" type="range" min="1" max="10" value="5"></div>
+    <div><label for="bounce">Head bounce</label><input id="bounce" type="range" min="0" max="10" value="5"></div>
+  </div>
+</section>
+<section class="stage">
+  <canvas id="cv" width="1080" height="1920"></canvas>
+  <div class="row" style="margin-top:14px;justify-content:center">
+    <button class="btn yellow" id="play" disabled>▶ Preview</button>
+    <button class="btn pink" id="export" disabled>⬇ Export video</button>
+  </div>
+  <div id="status">Pick a character and add a voice to begin ✨</div>
+</section>
+</main>
+<footer>Made with 🌷 by <a href="https://github.com/swapagrawal14" target="_blank" rel="noopener">Swapnil Agrawal</a> · sibling of <a href="https://rigpop-one.vercel.app/" target="_blank" rel="noopener">Rigpop</a> · MIT</footer>
+
+<script>
+const CHARS = {"swapnil":{"name":"Swapnil","anchor":"bottom","w":614,"h":719,"patches":{"A":{"x":180,"y":297,"w":248,"h":144},"O":{"x":244,"y":299,"w":134,"h":93},"E":{"x":218,"y":283,"w":174,"h":104},"blink":{"x":188,"y":190,"w":230,"h":78}}},"mochi":{"name":"Mochi","w":460,"h":669,"patches":{"A":{"x":168,"y":261,"w":124,"h":135},"O":{"x":175,"y":254,"w":110,"h":94},"E":{"x":163,"y":261,"w":135,"h":75},"blink":{"x":94,"y":225,"w":274,"h":80}}},"froggo":{"name":"Froggo","w":521,"h":642,"patches":{"A":{"x":104,"y":237,"w":303,"h":161},"O":{"x":104,"y":237,"w":303,"h":103},"E":{"x":94,"y":229,"w":326,"h":131},"blink":{"x":93,"y":138,"w":324,"h":107}}}};
+const BGS=["#faeda0","#bfe3f2","#ffd2b0","#ffc8dd","#c9f2dc","#e4d7ff","#fffaf0","#1f2a9c"];
+const $=id=>document.getElementById(id);
+const cv=$("cv"),ctx=cv.getContext("2d");
+let cur="swapnil",imgs={},bg=BGS[0],bgImg=null,state={shape:"rest",shapeT:0,blinkUntil:0,nextBlink:2,lvl:0,peak:0.05};
+let actx,analyser,srcNode,dest,audioEl,mediaUrl,liveStream,liveSrc,playing=false,recording=false;
+
+async function loadChars(){
+  const meta=await fetch("characters/characters.json").then(r=>r.json()).catch(()=>null);
+  if(meta) for(const k in meta){CHARS[k]=Object.assign(CHARS[k]||{name:k},{w:meta[k].w,h:meta[k].h,patches:meta[k].patches});}
+  const load=s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=s;});
+  for(const k in CHARS){imgs[k]={base:await load(`characters/${k}_base.png`)};
+    for(const e of ["A","O","E","blink"]) imgs[k][e]=await load(`characters/${k}_${e}.png`);}
+  const box=$("chars");
+  for(const k in CHARS){const b=document.createElement("button");b.innerHTML=`<img src="characters/${k}_base.png" alt="">${CHARS[k].name}`;
+    b.onclick=()=>{cur=k;[...box.children].forEach(c=>c.classList.remove("on"));b.classList.add("on")};
+    if(k===cur)b.classList.add("on");box.appendChild(b);}
+}
+BGS.forEach((c,i)=>{const s=document.createElement("div");s.className="sw"+(i?"":" on");s.style.background=c;
+  s.onclick=()=>{bg=c;bgImg=null;document.querySelectorAll(".sw").forEach(x=>x.classList.remove("on"));s.classList.add("on")};$("bgs").appendChild(s)});
+$("bgfile").onchange=e=>{const f=e.target.files[0];if(!f)return;const i=new Image();i.onload=()=>bgImg=i;i.src=URL.createObjectURL(f)};
+$("format").onchange=()=>{const f=$("format").value;[cv.width,cv.height]=f==="9:16"?[1080,1920]:f==="1:1"?[1080,1080]:[1920,1080]};
+
+function ensureAudio(){
+  if(actx)return;
+  actx=new (window.AudioContext||window.webkitAudioContext)();
+  analyser=actx.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=0.35;
+  dest=actx.createMediaStreamDestination();
+}
+function useAudioBlob(blob,name){
+  ensureAudio();stopLive();
+  if(audioEl){audioEl.pause();}
+  if(mediaUrl)URL.revokeObjectURL(mediaUrl);
+  mediaUrl=URL.createObjectURL(blob);
+  audioEl=new Audio();audioEl.src=mediaUrl;audioEl.crossOrigin="anonymous";
+  srcNode=actx.createMediaElementSource(audioEl);
+  srcNode.connect(analyser);srcNode.connect(actx.destination);srcNode.connect(dest);
+  audioEl.onended=()=>{playing=false;$("play").textContent="▶ Preview";if(recording)stopRecording();};
+  audioEl.onloadedmetadata=()=>{$("audioName").innerHTML=`<small>🎧 ${name} · ${audioEl.duration.toFixed(1)}s</small>`};
+  $("play").disabled=false;$("export").disabled=false;
+  status("Voice loaded! Hit Preview, or Export to get your video 🎬");
+}
+$("file").onchange=e=>{const f=e.target.files[0];if(f)useAudioBlob(f,f.name)};
+
+let micRec,micChunks;
+$("rec").onclick=async()=>{
+  if(micRec&&micRec.state==="recording"){micRec.stop();return;}
+  try{const s=await navigator.mediaDevices.getUserMedia({audio:true});
+    micChunks=[];micRec=new MediaRecorder(s);micRec.ondataavailable=e=>micChunks.push(e.data);
+    micRec.onstop=()=>{s.getTracks().forEach(t=>t.stop());$("rec").textContent="🎙️ Record";useAudioBlob(new Blob(micChunks,{type:micRec.mimeType}),"your recording")};
+    micRec.start();$("rec").textContent="⏹ Stop";status("Recording… talk to your character 🎙️");
+  }catch(err){status("Mic blocked. Allow microphone access and try again.")}
+};
+$("live").onclick=async()=>{
+  if(liveStream){stopLive();status("Live mic off");return;}
+  ensureAudio();await actx.resume();
+  try{liveStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true}});
+    liveSrc=actx.createMediaStreamSource(liveStream);liveSrc.connect(analyser);
+    $("live").textContent="⏹ Stop live";status("Live! Your character copies you in real time 😄");
+  }catch(err){status("Mic blocked. Allow microphone access and try again.")}
+};
+function stopLive(){if(liveStream){liveStream.getTracks().forEach(t=>t.stop());liveSrc.disconnect();liveStream=null;$("live").textContent="🔴 Live mic";}}
+
+$("play").onclick=async()=>{
+  if(!audioEl)return;await actx.resume();
+  if(playing){audioEl.pause();playing=false;$("play").textContent="▶ Preview";return;}
+  audioEl.currentTime=0;await audioEl.play();playing=true;$("play").textContent="⏸ Pause";
+};
+
+let mr,chunks;
+$("export").onclick=async()=>{
+  if(!audioEl||recording)return;await actx.resume();
+  const vs=cv.captureStream(30);
+  const stream=new MediaStream([...vs.getVideoTracks(),...dest.stream.getAudioTracks()]);
+  const types=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
+  const type=types.find(t=>MediaRecorder.isTypeSupported(t))||"";
+  chunks=[];mr=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:8e6});
+  mr.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+  mr.onstop=()=>{const ext=type.includes("mp4")?"mp4":"webm";const blob=new Blob(chunks,{type:type||"video/webm"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`rigpop-talk-${cur}.${ext}`;a.click();
+    status(`Done! Saved rigpop-talk-${cur}.${ext} 🎉`);$("export").disabled=false;$("play").disabled=false;};
+  recording=true;$("export").disabled=true;$("play").disabled=true;
+  audioEl.pause();audioEl.currentTime=0;
+  mr.start(100);await new Promise(r=>setTimeout(r,150));await audioEl.play();playing=true;
+  status("Recording your video… keep this tab open ⏺");
+};
+function stopRecording(){recording=false;setTimeout(()=>mr&&mr.state!=="inactive"&&mr.stop(),250);}
+function status(t){$("status").textContent=t}
+
+// --- lip sync ---
+const fbuf=new Uint8Array(512),tbuf=new Uint8Array(1024);
+function analyse(dt){
+  if(!analyser||!(playing||liveStream)){state.lvl*=0.8;return{lvl:state.lvl,shape:"rest"};}
+  analyser.getByteTimeDomainData(tbuf);analyser.getByteFrequencyData(fbuf);
+  let s=0;for(const v of tbuf){const x=(v-128)/128;s+=x*x}let rms=Math.sqrt(s/tbuf.length);
+  state.peak=Math.max(rms,state.peak*0.995,0.02);
+  const sens=+$("sens").value/5;
+  let lvl=Math.min(1,rms/state.peak*0.9*sens);
+  state.lvl=state.lvl*0.4+lvl*0.6;
+  const hz=actx.sampleRate/analyser.fftSize;const band=(a,b)=>{let t=0,n=0;for(let i=Math.floor(a/hz);i<Math.min(fbuf.length,b/hz);i++){t+=fbuf[i];n++}return t/Math.max(n,1)};
+  const lo=band(80,450),mid=band(450,1800),hi=band(1800,6000);
+  let shape="rest";const L=state.lvl;
+  if(L>0.18){
+    if(hi>mid*0.9&&L<0.75)shape="E";
+    else if(lo>mid*1.35)shape="O";
+    else shape=L>0.45?"A":"E";
+  }
+  return{lvl:L,shape};
+}
+
+let last=performance.now(),t0=last;
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;const t=(now-t0)/1000;
+  const {lvl,shape}=analyse(dt);
+  $("meter").style.width=(lvl*100).toFixed(0)+"%";
+  // hold shapes a little to avoid flicker
+  if(shape!==state.shape&&t-state.shapeT>0.07){state.shape=shape;state.shapeT=t;}
+  if(t>state.nextBlink){state.blinkUntil=t+0.12;state.nextBlink=t+2+Math.random()*3.5;}
+  draw(t,lvl);
+  requestAnimationFrame(frame);
+}
+function drawPattern(W,H){
+  const p=$("pattern").value;if(p==="none")return;
+  ctx.save();ctx.globalAlpha=0.18;ctx.fillStyle=bg==="#1f2a9c"?"#fff":"#1f2a9c";
+  const g=Math.round(W/14);
+  for(let y=g/2;y<H;y+=g)for(let x=(y/g%2?g/2:0)+g/4;x<W;x+=g){
+    if(p==="dots"){ctx.beginPath();ctx.arc(x,y,W/220,0,7);ctx.fill();}
+    else{star(x,y,W/90);}
+  }ctx.restore();
+}
+function star(x,y,r){ctx.beginPath();for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2,rr=i%2?r*0.45:r;ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr)}ctx.closePath();ctx.fill();}
+function wrap(text,maxW){const words=text.split(/\s+/),lines=[];let l="";for(const w of words){const tt=l?l+" "+w:w;if(ctx.measureText(tt).width>maxW&&l){lines.push(l);l=w}else l=tt}if(l)lines.push(l);return lines}
+function draw(t,lvl){
+  const W=cv.width,H=cv.height;
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  if(bgImg){const s=Math.max(W/bgImg.width,H/bgImg.height);ctx.drawImage(bgImg,(W-bgImg.width*s)/2,(H-bgImg.height*s)/2,bgImg.width*s,bgImg.height*s);}
+  else drawPattern(W,H);
+  const title=$("title").value.trim();let top=0;
+  if(title){
+    ctx.font=`bold ${Math.round(Math.min(W,H)*0.068)}px "Trebuchet MS",system-ui,sans-serif`;ctx.textAlign="center";ctx.textBaseline="middle";
+    const lines=wrap(title,W*0.82).slice(0,3),lh=Math.min(W,H)*0.085;
+    const bh=lines.length*lh+lh*0.6,by=H*0.06;
+    ctx.save();ctx.translate(W/2,by+bh/2);ctx.rotate(-0.02);
+    ctx.fillStyle="#1f2a9c";roundRect(-W*0.44+10,-bh/2+10,W*0.88,bh,30);ctx.fill();
+    ctx.fillStyle="#fff";roundRect(-W*0.44,-bh/2,W*0.88,bh,30);ctx.fill();ctx.lineWidth=7;ctx.strokeStyle="#1f2a9c";ctx.stroke();
+    ctx.fillStyle="#1f2a9c";lines.forEach((ln,i)=>ctx.fillText(ln,0,(i-(lines.length-1)/2)*lh));ctx.restore();
+    top=by+bh+H*0.02;
+  }
+  const c=CHARS[cur],im=imgs[cur];if(!im||!im.base)return;
+  const avail=H-top,size=+$("size").value/100;
+  let s=Math.min(W*0.95/c.w,avail*0.82/c.h)*size;
+  const bounce=+$("bounce").value/5;
+  const breathe=Math.sin(t*2.1)*0.006;
+  const sc=s*(1+breathe+lvl*0.025*bounce);
+  const rot=(Math.sin(t*1.3)*0.012+Math.sin(t*7.3)*lvl*0.025)*bounce;
+  const lift=Math.sin(t*1.7)*4+lvl*14*bounce;
+  let bottom;
+  if(c.anchor==="bottom"){bottom=H+H*0.015-lift*0.4;}
+  else{bottom=H-(avail-c.h*s)*0.3-H*0.03;
+    ctx.save();ctx.fillStyle="rgba(31,42,156,.16)";ctx.beginPath();ctx.ellipse(W/2,bottom-4,c.w*s*0.36*(1-lift/400),c.w*s*0.06,0,0,7);ctx.fill();ctx.restore();
+    bottom-=lift;}
+  const cx=W/2;
+  ctx.save();ctx.translate(cx,bottom);ctx.rotate(rot);ctx.scale(sc,sc);ctx.translate(-c.w/2,-c.h);
+  ctx.drawImage(im.base,0,0);
+  const P=c.patches;
+  if(state.shape!=="rest"&&im[state.shape]&&P[state.shape]){const p=P[state.shape];ctx.drawImage(im[state.shape],p.x,p.y,p.w,p.h);}
+  if(t<state.blinkUntil&&im.blink&&P.blink){const p=P.blink;ctx.drawImage(im.blink,p.x,p.y,p.w,p.h);}
+  ctx.restore();
+}
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+loadChars().then(()=>requestAnimationFrame(frame));
+</script>
+</body>
+</html>
