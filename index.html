@@ -31,6 +31,7 @@ main{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:20px;padding
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .sw{width:30px;height:30px;border-radius:50%;border:3px solid var(--ink);cursor:pointer}
 .sw.on{outline:3px dashed var(--pink);outline-offset:2px}
+#poseBox .btn.on{background:#2bb673;color:#fff}
 label{font-weight:bold;font-size:14px}
 input[type=text]{width:100%;padding:9px;border:3px solid var(--ink);border-radius:10px;font:inherit;color:var(--ink)}
 input[type=range]{width:100%;accent-color:var(--pink)}
@@ -68,6 +69,8 @@ footer a{color:var(--ink)}
     <details class="howto" id="doodleHelp" style="margin-top:8px"><summary>🖍️ How "Your doodle" works</summary><ol>
       <li>Tap <b>＋ Your doodle</b> and pick a drawing from your gallery.</li>
       <li>Tap its mouth (or drag a box), then tap both eyes.</li>
+      <li>Tap its two shoulders for bendy cartoon arms that wave, point, and give a thumbs up while it talks (optional).</li>
+      <li>Want drawn gestures instead? Open "Add pose pictures" and copy the AI prompt for ChatGPT or Gemini.</li>
       <li>Name it, hit Done, and it talks and blinks in its own colours.</li>
     </ol><small>Front-facing doodles with a clear mouth work best. Your last 4 stay saved on this phone.</small></details>
     <div id="duetPick" hidden>
@@ -113,7 +116,7 @@ footer a{color:var(--ink)}
     <div style="margin-top:10px"><label for="size">Character size</label><input id="size" type="range" min="50" max="130" value="92"></div>
     <div><label for="sens">Mouth sensitivity</label><input id="sens" type="range" min="1" max="10" value="5"></div>
     <div><label for="bounce">Head bounce</label><input id="bounce" type="range" min="0" max="10" value="5"></div>
-    <label><input type="checkbox" id="gest" checked> 🙌 Hand gestures (Dr. Swapnil)</label>
+    <label><input type="checkbox" id="gest" checked> 🙌 Hand gestures</label>
     <div style="margin-top:10px"><label>🎵 Background music</label>
       <div class="row"><label class="btn" for="musicFile" style="font-size:13px;padding:6px 10px">🎵 Add music</label><input id="musicFile" type="file" accept="audio/*,video/*" hidden>
       <button class="btn" id="musicDel" style="font-size:13px;padding:6px 10px" hidden>✕ Remove</button></div>
@@ -150,8 +153,17 @@ footer a{color:var(--ink)}
     <li>Use a <b>front-facing</b> doodle. A PNG with a see-through or plain background works best.</li>
     <li><b>Tap the mouth</b> once, or drag a box around it.</li>
     <li><b>Tap each eye</b> so it can blink (optional).</li>
+    <li><b>Tap the left shoulder, then the right</b> to get bendy cartoon arms that wave, point and give a thumbs up (optional).</li>
     <li>Name it and hit <b>Done</b>. Then add a voice like normal.</li>
   </ol><small>If "Remove plain background" eats part of your drawing, untick it. Redo starts the marking again.</small></details>
+  <details class="howto" id="poseBox"><summary>🙌 Want real drawn gestures? Add pose pictures (optional)</summary>
+    <small>Make 4 versions of this same picture, with only the arms changed. Keep the head in the same spot and the same image size. Copy the prompt and paste it into ChatGPT or Gemini with your picture, once per pose. Pose pictures replace the bendy arms.</small>
+    <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px">
+      <button class="btn" data-pose="wave">👋 Wave</button><button class="btn" data-pose="point">☝️ Point</button>
+      <button class="btn" data-pose="open">🤲 Open palms</button><button class="btn" data-pose="thumbs">👍 Thumbs up</button>
+    </div>
+    <div class="row" style="margin-top:6px"><button class="btn yellow" id="copyPrompt">📋 Copy AI prompt</button></div>
+  </details>
   <canvas id="rigCv"></canvas>
   <div class="row" style="justify-content:center;margin-top:8px">
     <label><input type="checkbox" id="rigBg" checked> Remove plain background</label>
@@ -162,7 +174,7 @@ footer a{color:var(--ink)}
     <button class="btn pink" id="rigDone" disabled>✅ Done</button><button class="btn" id="rigCancel">✕</button>
   </div>
 </div></div>
-<input id="doodleFile" type="file" accept="image/*" hidden>
+<input id="doodleFile" type="file" accept="image/*" hidden><input id="poseFile" type="file" accept="image/*" hidden>
 <footer>Made with 🌷 by <a href="https://github.com/swapagrawal14" target="_blank" rel="noopener">Swapnil Agrawal</a> · sibling of <a href="https://rigpop-one.vercel.app/" target="_blank" rel="noopener">Rigpop</a> · MIT</footer>
 
 <script>
@@ -442,10 +454,11 @@ function addDoodleButton(){const box=$("chars");const b=document.createElement("
   b.onclick=()=>$("doodleFile").click();box.appendChild(b);}
 $("doodleFile").onchange=e=>{const f=e.target.files[0];e.target.value="";if(!f)return;const i=new Image();
   i.onload=()=>{const sc=Math.min(1,900/Math.max(i.width,i.height));const c=document.createElement("canvas");c.width=Math.round(i.width*sc);c.height=Math.round(i.height*sc);
-    c.getContext("2d").drawImage(i,0,0,c.width,c.height);rig={src:c,img:null,step:"mouth",mouth:null,eyes:[],drag:null};
+    c.getContext("2d").drawImage(i,0,0,c.width,c.height);rig={src:c,img:null,step:"mouth",mouth:null,eyes:[],shoulders:[],poses:{},poseSrc:{},drag:null};updPoseBtns();
     $("rigName").value="";$("rig").hidden=false;rigProcess();};i.src=URL.createObjectURL(f);};
 $("rigBg").onchange=()=>rig&&rigProcess();
-function rigProcess(){const src=rig.src,W=src.width,H=src.height,c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");x.drawImage(src,0,0);
+function rigProcess(){rig.img=removeBg(rig.src);for(const p in rig.poseSrc)rig.poses[p]=removeBg(rig.poseSrc[p]);rigCv.width=rig.img.width;rigCv.height=rig.img.height;rigDraw();}
+function removeBg(src){const W=src.width,H=src.height,c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");x.drawImage(src,0,0);
   if($("rigBg").checked){const im=x.getImageData(0,0,W,H),d=im.data;
     const corners=[[0,0],[W-1,0],[0,H-1],[W-1,H-1]].map(([a,b])=>{const k=(b*W+a)*4;return[d[k],d[k+1],d[k+2],d[k+3]]});
     const ref=corners[0],near=(k,r,t)=>Math.abs(d[k]-r[0])+Math.abs(d[k+1]-r[1])+Math.abs(d[k+2]-r[2])<t;
@@ -454,29 +467,42 @@ function rigProcess(){const src=rig.src,W=src.width,H=src.height,c=document.crea
       while(st.length){const p=st.pop();if(seen[p])continue;seen[p]=1;const k=p*4;if(!near(k,ref,70))continue;d[k+3]=0;
         const px=p%W,py=(p/W)|0;if(px>0)st.push(p-1);if(px<W-1)st.push(p+1);if(py>0)st.push(p-W);if(py<H-1)st.push(p+W);}
       x.putImageData(im,0,0);}}
-  rig.img=c;rigCv.width=W;rigCv.height=H;rigDraw();}
+  return c;}
 function rigDraw(){if(!rig)return;rctx.clearRect(0,0,rigCv.width,rigCv.height);rctx.drawImage(rig.img,0,0);
   rctx.lineWidth=Math.max(3,rigCv.width/150);rctx.strokeStyle="#ff5fa2";rctx.setLineDash([10,6]);
   const m=rig.drag||rig.mouth;if(m)rctx.strokeRect(m.x,m.y,m.w,m.h);rctx.setLineDash([]);
   rctx.fillStyle="#ff5fa2";for(const e of rig.eyes){rctx.beginPath();rctx.arc(e.x,e.y,rigCv.width/60,0,7);rctx.fill();}
-  $("rigTitle").textContent=rig.step==="mouth"?"Tap or drag over the mouth 👄":rig.step==="eyes"?`Now tap each eye 👀 (${rig.eyes.length}/2), or hit Done`:"All set! Name it and tap Done ✨";
-  $("rigSkip").hidden=rig.step!=="eyes";$("rigDone").disabled=!rig.mouth;}
+  rctx.fillStyle="#2bb673";for(const e of rig.shoulders){rctx.beginPath();rctx.arc(e.x,e.y,rigCv.width/50,0,7);rctx.fill();}
+  $("rigTitle").textContent=rig.step==="mouth"?"Tap or drag over the mouth 👄":rig.step==="eyes"?`Now tap each eye 👀 (${rig.eyes.length}/2), or hit Done`:rig.step==="arms"?`Tap the left shoulder, then the right 💪 (${rig.shoulders.length}/2) for gestures`:"All set! Name it and tap Done ✨";
+  $("rigSkip").hidden=!(rig.step==="eyes"||rig.step==="arms");$("rigSkip").textContent=rig.step==="arms"?"Skip arms":"Skip eyes";$("rigDone").disabled=!rig.mouth;}
 const rp=e=>{const r=rigCv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*rigCv.width,y:(e.clientY-r.top)/r.height*rigCv.height}};
 rigCv.onpointerdown=e=>{if(!rig)return;const p=rp(e);
   if(rig.step==="mouth"){rig.start=p;rig.drag={x:p.x,y:p.y,w:1,h:1};rigCv.setPointerCapture(e.pointerId);}
-  else if(rig.step==="eyes"){rig.eyes.push(p);if(rig.eyes.length===2)rig.step="done";}rigDraw();};
+  else if(rig.step==="eyes"){rig.eyes.push(p);if(rig.eyes.length===2)rig.step="arms";}
+  else if(rig.step==="arms"){rig.shoulders.push(p);if(rig.shoulders.length===2){rig.shoulders.sort((a,b)=>a.x-b.x);rig.step="done";}}rigDraw();};
 rigCv.onpointermove=e=>{if(!rig||!rig.drag)return;const p=rp(e),a=rig.start;rig.drag={x:Math.min(a.x,p.x),y:Math.min(a.y,p.y),w:Math.abs(p.x-a.x),h:Math.abs(p.y-a.y)};rigDraw();};
 rigCv.onpointerup=()=>{if(!rig||!rig.drag)return;const m=rig.drag;rig.drag=null;
   if(m.w>8&&m.h>4)rig.mouth=m;
   else{const w=rigCv.width*0.14;rig.mouth={x:rig.start.x-w/2,y:rig.start.y-w*0.3,w,h:w*0.6};}
   rig.step="eyes";rigDraw();};
-$("rigBack").onclick=()=>{if(!rig)return;rig.mouth=null;rig.eyes=[];rig.step="mouth";rigDraw();};
-$("rigSkip").onclick=()=>{rig.step="done";rigDraw();};
+$("rigBack").onclick=()=>{if(!rig)return;rig.mouth=null;rig.eyes=[];rig.shoulders=[];rig.step="mouth";rigDraw();};
+$("rigSkip").onclick=()=>{rig.step=rig.step==="eyes"?"arms":"done";if(rig.step==="done")rig.shoulders=[];rigDraw();};
+let posePick=null;const POSE_TXT={wave:"one arm raised beside the head, elbow bent, open palm facing the viewer, waving hello",point:"one arm bent with the hand at shoulder height, index finger pointing straight up like 'I have an idea'",open:"both arms bent, forearms out in front at waist height, palms open facing up, an explaining 'you see?' gesture",thumbs:"one hand raised in front of the chest giving a big thumbs up"};
+function updPoseBtns(){document.querySelectorAll("#poseBox [data-pose]").forEach(b=>b.classList.toggle("on",!!(rig&&rig.poses[b.dataset.pose])));}
+document.querySelectorAll("#poseBox [data-pose]").forEach(b=>b.onclick=()=>{posePick=b.dataset.pose;$("poseFile").click();});
+$("poseFile").onchange=e=>{const f=e.target.files[0];e.target.value="";if(!f||!rig||!posePick)return;const i=new Image();
+  i.onload=()=>{const c=document.createElement("canvas");c.width=rig.src.width;c.height=rig.src.height;c.getContext("2d").drawImage(i,0,0,c.width,c.height);
+    rig.poseSrc[posePick]=c;rig.poses[posePick]=removeBg(c);updPoseBtns();status(`Pose added: ${posePick} ✅`);};i.src=URL.createObjectURL(f);};
+$("copyPrompt").onclick=()=>{const t="Edit this exact image. Keep everything identical: the same character, face, head position, size, framing, background and drawing style. Same image size. Change ONLY the arms and hands:\n\n"+
+  Object.entries(POSE_TXT).map(([k,v],i)=>`${i+1}. ${k.toUpperCase()}: ${v}.`).join("\n")+"\n\nMake one image per pose (4 images). No text.";
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>status("Prompt copied! Paste it into ChatGPT with your picture 📋")).catch(()=>prompt("Copy this prompt:",t));};
 $("rigCancel").onclick=()=>{$("rig").hidden=true;rig=null;};
 $("rigDone").onclick=()=>{const name=$("rigName").value.trim()||"My doodle";
-  const data={name,img:rig.img.toDataURL("image/png"),mouth:rig.mouth,eyes:rig.eyes};
+  const poses={};for(const p in rig.poses)poses[p]=rig.poses[p].toDataURL("image/png");
+  const data={name,img:rig.img.toDataURL("image/png"),mouth:rig.mouth,eyes:rig.eyes,shoulders:rig.shoulders.length===2?rig.shoulders:null,poses};
   $("rig").hidden=true;rig=null;registerDoodle(data,true);
-  try{const all=JSON.parse(localStorage.getItem("rigpopDoodles")||"[]");all.push(data);localStorage.setItem("rigpopDoodles",JSON.stringify(all.slice(-4)));}catch(e){status("Character added (too big to remember after refresh)");}};
+  try{const all=JSON.parse(localStorage.getItem("rigpopDoodles")||"[]");all.push(data);localStorage.setItem("rigpopDoodles",JSON.stringify(all.slice(-4)));}
+  catch(e){try{const all=JSON.parse(localStorage.getItem("rigpopDoodles")||"[]");all.push(Object.assign({},data,{poses:{}}));localStorage.setItem("rigpopDoodles",JSON.stringify(all.slice(-3)));status("Character added (pose pictures won't be remembered after refresh)");}catch(e2){status("Character added (too big to remember after refresh)");}}};
 function sampleRig(img,m,eyes){const W=img.width,H=img.height,x=img.getContext("2d"),d=x.getImageData(0,0,W,H).data;
   const px=(a,b)=>{a=Math.max(0,Math.min(W-1,a|0));b=Math.max(0,Math.min(H-1,b|0));const k=(b*W+a)*4;return[d[k],d[k+1],d[k+2],d[k+3]]};
   const ring=[];for(let i=0;i<24;i++){const a=i/24*Math.PI*2;const p=px(m.x+m.w/2+Math.cos(a)*m.w*0.75,m.y+m.h/2+Math.sin(a)*m.h*0.95);if(p[3]>200)ring.push(p);}
@@ -485,12 +511,15 @@ function sampleRig(img,m,eyes){const W=img.width,H=img.height,x=img.getContext("
   for(let yy=m.y;yy<m.y+m.h;yy+=2)for(let xx=m.x;xx<m.x+m.w;xx+=2){const p=px(xx,yy);const v=p[0]+p[1]+p[2];if(p[3]>200&&v<dv){dv=v;dark=p;}}
   const er=eyes.length===2?Math.hypot(eyes[0].x-eyes[1].x,eyes[0].y-eyes[1].y)*0.24:0;
   const lids=eyes.map(e=>med([px(e.x,e.y-er*1.5),px(e.x-er*1.3,e.y-er*1.2),px(e.x+er*1.3,e.y-er*1.2)].filter(p=>p[3]>200)));
-  const rgb=c=>`rgb(${c[0]},${c[1]},${c[2]})`;return{skin:rgb(skin),ink:rgb(dark.slice(0,3)),er,lids:lids.map(rgb)};}
+  const rgb=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
+  const sl=(sh)=>sh?sh.map(p=>{const q=[[0,0],[0,6],[6,0],[-6,0],[0,-6]].map(([a,b])=>px(p.x+a,p.y+b)).filter(c=>c[3]>200);return rgb(med(q.length?q:[[120,170,220,255]]));}):null;
+  return{skin:rgb(skin),ink:rgb(dark.slice(0,3)),er,lids:lids.map(rgb),sleeves:sl(arguments[3])};}
 let doodleN=0;
 function registerDoodle(data,select){const i=new Image();i.onload=()=>{
   const c=document.createElement("canvas");c.width=i.width;c.height=i.height;c.getContext("2d").drawImage(i,0,0);
-  const k="doodle"+(++doodleN);CHARS[k]={name:data.name,w:c.width,h:c.height,patches:{},custom:Object.assign({mouth:data.mouth,eyes:data.eyes},sampleRig(c,data.mouth,data.eyes))};
-  imgs[k]={base:c};
+  const k="doodle"+(++doodleN);CHARS[k]={name:data.name,w:c.width,h:c.height,patches:{},custom:Object.assign({mouth:data.mouth,eyes:data.eyes,shoulders:data.shoulders||null},sampleRig(c,data.mouth,data.eyes,data.shoulders))};
+  imgs[k]={base:c};const pz=data.poses||{};if(Object.keys(pz).length){imgs[k].poses={};CHARS[k].poses=Object.keys(pz);
+    for(const p in pz){const pi=new Image();pi.onload=()=>{const pc=document.createElement("canvas");pc.width=c.width;pc.height=c.height;pc.getContext("2d").drawImage(pi,0,0,c.width,c.height);imgs[k].poses[p]=pc;};pi.src=pz[p];}}
   const box=$("chars"),add=box.querySelector(".add"),b=document.createElement("button");b.innerHTML=`<img src="${data.img}" alt="">${data.name}`;
   b.onclick=()=>{cur=k;[...box.children].forEach(x=>x.classList.remove("on"));b.classList.add("on")};box.insertBefore(b,add);
   fillDuetSelects();if(select)b.click();if(select)status(`${data.name} is ready to talk! Add a voice 🎙️`);};i.src=data.img;}
@@ -673,14 +702,52 @@ function drawChar(k,cx,s,avail,t,lvl,shape,blinking,idx,gs){
     bottom-=lift;}
   ctx.save();ctx.translate(cx,bottom);ctx.rotate(rot);ctx.scale(sc,sc);ctx.translate(-c.w/2,-c.h);
   let body=im.base;
-  if(im.poses&&gs&&$("gest").checked){gestureStep(gs,t,lvl>0.12||shape!=="rest",im.poses);if(gs.pose&&im.poses[gs.pose])body=im.poses[gs.pose];}
+  const gOn=gs&&$("gest").checked,hasImgPoses=im.poses&&Object.keys(im.poses).length,hasArms=c.custom&&c.custom.shoulders&&!hasImgPoses;
+  if(gOn&&hasImgPoses){gestureStep(gs,t,lvl>0.12||shape!=="rest",im.poses);if(gs.pose&&im.poses[gs.pose])body=im.poses[gs.pose];}
+  else if(gOn&&hasArms)gestureStep(gs,t,lvl>0.12||shape!=="rest",ARM_POSES);
   ctx.drawImage(body,0,0);
   const P=c.patches;
+  if(gOn&&hasArms)drawArms(c.custom,gs,t);
   if(c.custom)drawCustom(c,shape,blinking);
   if(shape!=="rest"&&im[shape]&&P[shape]){const p=P[shape];ctx.drawImage(im[shape],p.x,p.y,p.w,p.h);}
   if(blinking&&im.blink&&P.blink){const p=P.blink;ctx.drawImage(im.blink,p.x,p.y,p.w,p.h);}
   ctx.restore();
 }
+// --- bendy doodle arms for uploaded characters ---
+const ARM_POSES={wave:1,point:1,open:1,thumbs:1};
+// per pose: which arms (L = viewer-left, R = viewer-right) -> [elbow, hand] offsets in shoulder-width units (x outward-positive), hand type
+const ARM_DEF={wave:{L:[[0.4,0.15],[0.5,-0.5],"palm"]},point:{R:[[0.4,0.2],[0.34,-0.42],"point"]},
+  open:{L:[[0.36,0.28],[0.62,-0.02],"up"],R:[[0.36,0.28],[0.62,-0.02],"up"]},thumbs:{L:[[0.22,0.32],[-0.12,-0.12],"thumb"]}};
+const ARM_REST=[[0.14,0.65],[0.18,1.35]];
+function drawArms(R,gs,t){if(gs.a<0.02||!gs.last)return;const def=ARM_DEF[gs.last];if(!def)return;
+  const [SL,SR]=R.shoulders,d=Math.hypot(SR.x-SL.x,SR.y-SL.y),e=gs.a*gs.a*(3-2*gs.a);
+  const lw=Math.max(3,d*0.03),thick=d*0.16;
+  for(const side of ["L","R"]){const a=def[side];if(!a)continue;const S=side==="L"?SL:SR,sx=side==="L"?-1:1;
+    const mix=(p,q)=>[p[0]+(q[0]-p[0])*e,p[1]+(q[1]-p[1])*e];
+    const el=mix(ARM_REST[0],a[0]),hd=mix(ARM_REST[1],a[1]);
+    let wig=gs.last==="wave"?Math.sin(t*11)*0.06*e:0;
+    const E={x:S.x+sx*el[0]*d,y:S.y+el[1]*d},H={x:S.x+sx*(hd[0]+wig)*d,y:S.y+hd[1]*d};
+    const sleeve=(R.sleeves&&R.sleeves[side==="L"?0:1])||R.skin;
+    ctx.save();ctx.lineCap="round";ctx.lineJoin="round";
+    const path=()=>{ctx.beginPath();ctx.moveTo(S.x,S.y);ctx.quadraticCurveTo(E.x,E.y,H.x,H.y);};
+    path();ctx.strokeStyle=R.ink;ctx.lineWidth=thick+lw*2;ctx.stroke();
+    path();ctx.strokeStyle=R.skin;ctx.lineWidth=thick;ctx.stroke();
+    // sleeve cap
+    ctx.beginPath();ctx.moveTo(S.x,S.y);const m={x:S.x+(E.x-S.x)*0.28,y:S.y+(E.y-S.y)*0.28};ctx.lineTo(m.x,m.y);
+    ctx.strokeStyle=R.ink;ctx.lineWidth=thick*1.3+lw*2;ctx.stroke();ctx.strokeStyle=sleeve;ctx.lineWidth=thick*1.3;ctx.stroke();
+    drawHand(H,a[2],sx,d,R,lw,Math.atan2(H.y-E.y,H.x-E.x),wig);ctx.restore();}}
+function drawHand(H,type,sx,d,R,lw,ang,wig){const r=d*0.12;ctx.save();ctx.translate(H.x,H.y);
+  const blob=(x,y,w,h,rot=0)=>{ctx.beginPath();ctx.ellipse(x,y,w,h,rot,0,7);ctx.fillStyle=R.skin;ctx.fill();ctx.lineWidth=lw;ctx.strokeStyle=R.ink;ctx.stroke();};
+  const finger=(x1,y1,x2,y2,w)=>{ctx.lineCap="round";ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=R.ink;ctx.lineWidth=w+lw*2;ctx.stroke();ctx.strokeStyle=R.skin;ctx.lineWidth=w;ctx.stroke();};
+  if(type==="palm"){ctx.rotate(wig*3);for(let i=0;i<4;i++){const fx=(i-1.5)*r*0.42;finger(fx,-r*0.4,fx*1.25,-r*1.55+Math.abs(i-1.5)*r*0.18,r*0.34);}
+    finger(-sx*r*0.6,0,-sx*r*1.25,-r*0.45,r*0.34);blob(0,0,r*0.85,r*0.8);}
+  else if(type==="point"){finger(0,-r*0.3,0,-r*1.7,r*0.36);blob(0,0,r*0.8,r*0.72);ctx.beginPath();ctx.moveTo(-r*0.4,-r*0.05);ctx.lineTo(r*0.4,-r*0.05);ctx.moveTo(-r*0.4,r*0.3);ctx.lineTo(r*0.4,r*0.3);ctx.lineWidth=lw*0.8;ctx.strokeStyle=R.ink;ctx.stroke();}
+  else if(type==="thumb"){finger(0,-r*0.3,0,-r*1.45,r*0.4);blob(0,r*0.15,r*0.85,r*0.75);ctx.beginPath();for(const yy of [-0.05,0.25,0.55]){ctx.moveTo(-r*0.45,r*yy);ctx.lineTo(r*0.35,r*yy);}ctx.lineWidth=lw*0.8;ctx.strokeStyle=R.ink;ctx.stroke();}
+  else{ // open palm facing up, fingers pointing outward
+    for(let i=0;i<4;i++){const fy=(i-1.5)*r*0.3;finger(sx*r*0.4,fy-r*0.15,sx*r*1.45-Math.abs(i-1.5)*sx*r*0.15,fy-r*0.35,r*0.3);}
+    finger(-sx*r*0.1,-r*0.4,sx*r*0.15,-r*1.1,r*0.32);blob(0,0,r*0.9,r*0.6);
+    ctx.beginPath();ctx.arc(0,-r*0.05,r*0.42,0.3,Math.PI-0.3);ctx.lineWidth=lw*0.8;ctx.strokeStyle=R.ink;ctx.stroke();}
+  ctx.restore();}
 function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 loadChars().then(()=>{addDoodleButton();try{JSON.parse(localStorage.getItem("rigpopDoodles")||"[]").forEach(d=>registerDoodle(d,false));}catch(e){}fillDuetSelects();requestAnimationFrame(frame);});
 </script>
