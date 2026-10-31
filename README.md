@@ -1,64 +1,96 @@
-# Rigpop Talk 🐸🎙️
+<p align="center"><img src="docs/hero.jpg" alt="Rigpop Talk characters" width="100%"></p>
 
-**Make doodles talk.** Drop in a voice note and a doodle character lip-syncs it, blinks, and bobs along. Export a 9:16 reel with sound, all in your browser. No server, no sign-up, no API key.
+<p align="center">
+<b>Make doodles talk.</b> Drop in a voice note and a doodle lip-syncs it, blinks, waves, and chats with a friend.<br>
+Export a 9:16 reel with captions and music, all in your browser. No server, no sign-up, no API key.<br><br>
+<a href="https://rigpop-talk.vercel.app/"><b>▶ Try it live: rigpop-talk.vercel.app</b></a>
+</p>
 
-![Rigpop Talk demo](docs/demo.gif)
+---
 
-## How it works
+## 🎬 See it in action
 
-1. **Pick a character:** Swapnil (the maker, drawn in blue-ink comic style), Mochi the bunny-cat, or Froggo.
-2. **Add a voice:** upload audio (mp3, wav, m4a, or even a video file), record from your mic, or go **Live mic** and watch the character copy you in real time.
-3. **Style it:** background colour or your own image, dots or stars pattern, an optional title sticker, 9:16 / 1:1 / 16:9.
-4. **Export:** you get a proper MP4 with the audio baked in, rendered faster than real time, with the correct length in any gallery app.
+<table>
+<tr>
+<td align="center" width="50%"><img src="docs/duet-reel.gif" width="260" alt="Doodle Swapnil and Aarav duet reel"><br><b>Duet: "Doctor's orders"</b><br>Doodle Swapnil × Aarav<br><a href="docs/duet-reel.mp4">Watch the full reel with sound</a></td>
+<td align="center" width="50%"><img src="docs/demo.gif" width="260" alt="Solo talking demo"><br><b>Solo talking head</b><br>Lip-sync, blinks, and head bob from any voice note</td>
+</tr>
+</table>
 
-## Bring your own doodle 🖍️
+## ✨ What it does
 
-Tap **＋ Your doodle** and upload any character drawing. Rigpop Talk removes a plain background, then you drag a box over the mouth and tap the two eyes. It paints talking mouth shapes in the doodle's own skin and ink colours, and adds blinks. Your last four doodles are remembered in this browser.
+| | |
+|---|---|
+| 🎙️ **Any voice** | Upload audio or video, record from your mic, or go **Live mic** and watch the character copy you in real time |
+| 👄 **Lip-sync** | Mouth shapes (A, O, E, rest), blinks, breathing, and a head bob that follows how loud you are |
+| 🙌 **Hand gestures** | Wave, point, open palms, and thumbs up, timed to the speech and triggered by words like "hello", "idea", "badhiya", or "kyun" |
+| 👯 **Duet mode** | Two characters talking to each other, line by line |
+| ✍️ **Auto captions** | Whisper runs in your browser: Hindi, English, or Hinglish, with word highlighting you can edit |
+| 🎵 **Background music** | Loops, fades, and dips automatically under the voice |
+| 🖍️ **Your own doodle** | Upload any drawing, mark the mouth and eyes, and it talks in its own colours |
+| ⬇️ **Real MP4 export** | H.264 + AAC with the correct length in any gallery app, rendered faster than real time |
 
-## Background music 🎵
+## 🌷 Meet the cast
 
-Add any song or beat under the voice. It loops, fades in and out, and dips automatically while a character talks. Set the volume, or switch the ducking off.
+<p align="center"><img src="docs/doodle-pack.jpg" alt="Doodle Swapnil, Aarav and Biscuit in all their gesture poses" width="90%"></p>
 
-## Auto captions ✍️
+| Character | Style | Gestures |
+|---|---|---|
+| **Dr. Swapnil** | Blue-ink risograph comic, in scrubs | ✅ |
+| **Doodle Swapnil** | Soft Korean doodle, in scrubs | ✅ |
+| **Aarav** | Soft Korean doodle, in a hoodie | ✅ |
+| **Biscuit** | Soft Korean doodle, a tabby cat | ✅ |
+| **Swapnil**, **Mochi**, **Froggo** | The original blue-ink trio | talk + blink |
 
-Tap **Make captions** and Whisper (running in your browser through transformers.js) turns the voice into bouncy, word-highlighted subtitles. Pick Auto, Hindi, English, or Hinglish (Hindi written in Roman letters). Every line is editable before export. The first run downloads a ~75 MB model, which the browser then caches. No audio leaves your device.
+## 🙌 Hand gestures
 
-## Cute doodle pack 🌷
+<p align="center"><img src="docs/gestures.jpg" alt="Dr. Swapnil gesture poses" width="90%"></p>
 
-Three more characters in a soft Korean-doodle style (thick black lines, pastel colours, blush cheeks): **Doodle Swapnil** in scrubs, **Aarav** in a hoodie, and **Biscuit** the tabby cat. Each one talks, blinks, and gestures with wave, point, open palms, and thumbs up.
+While a character talks, it waves hello at the start and gestures every few seconds. With captions on, words trigger the matching move:
 
-## Hand gestures 🙌
+- 👋 **Wave:** hello, hi, namaste, bye
+- ☝️ **Point:** idea, tip, first, important, listen
+- 👍 **Thumbs up:** great, best, yes, badhiya, accha
+- 🤲 **Open palms:** why, what, how, so, kyun, kya
 
-**Dr. Swapnil** comes with four hand poses: wave, point up, open palms, and thumbs up. While she talks, she waves hello at the start and gestures every few seconds. When captions are on, words trigger matching gestures ("hello" waves, "idea" points, "great"/"badhiya" gives a thumbs up, "why"/"kyun" opens the palms). Switch it off in Style.
+Switch it off any time in Style.
 
-**Mouth too big or off-centre?** Pick your doodle and use the Mouth size, up/down, and left/right sliders in Style. The mouth pops open while you drag so you can see it. Settings are saved with the doodle.
+## 🖍️ Bring your own doodle, with gestures
 
-**Any uploaded doodle can gesture too:**
-- **Bendy arms**: in the doodle setup, tap the left and right shoulder. The app draws rubber-hose cartoon arms in your doodle's skin, sleeve, and ink colours.
-- **Pose pictures**: open "Add pose pictures," copy the AI prompt, make wave, point, open-palm, and thumbs-up versions of your picture in ChatGPT or Gemini, and upload them. The app swaps them in while your doodle talks.
+1. Tap **＋ Your doodle** and pick a drawing. A plain background is removed automatically. Untick it if it eats part of your art.
+2. **Tap the mouth** (or drag a box over it), then tap both eyes so it can blink.
+3. **Tap both shoulders** for bendy cartoon arms in your doodle's own skin, sleeve, and ink colours:
 
-## Duet mode 👯
+<p align="center"><img src="docs/bendy-arms.png" alt="Bendy arms preview" width="90%"></p>
 
-Make two characters talk to each other. Tap **Duet**, pick who stands on the left and right, then add the conversation line by line: choose who says it, and record or upload that line. You can voice both sides yourself. The speaker lip-syncs and leans in a little while the other one listens and blinks. Lines can be reordered, deleted, or switched to the other character. Export works the same way.
+4. Want hand-drawn gestures instead? Open **Add pose pictures**, tap **Copy AI prompt**, paste it into ChatGPT or Gemini with your picture, and upload the four poses.
+5. **Mouth too big or off-centre?** Use the Mouth size, up/down, and left/right sliders in Style. Your last four doodles are remembered on your device.
 
-## Under the hood
+## 👯 Duet mode
 
-- **Lip sync:** the Web Audio API reads loudness and three frequency bands every frame and picks a mouth shape: rest, **A** (open), **O** (round), **E** (wide/teeth). Shapes are held for at least 70 ms so the mouth doesn't flicker.
-- **Life:** random blinks every 2 to 5.5 s, breathing, and a head bob that follows how loud you are.
-- **Characters:** each one is a transparent base picture plus small mouth and blink patches that sit exactly over the face (`characters/characters.json` holds the positions).
-- **Export:** every frame is drawn offline and encoded with WebCodecs (H.264 + AAC), then packed into an MP4 with [mp4-muxer](https://github.com/Vanilagy/mp4-muxer) (vendored in `lib/`). Browsers without WebCodecs fall back to `MediaRecorder`.
+Tap **Duet**, pick who stands left and right, then add the conversation line by line: choose who says it, and record or upload it. You can voice both sides yourself. The speaker lip-syncs, gestures, and leans in while the other one listens and blinks. Lines can be reordered, switched, or deleted.
 
-## Run it
+## 🛠️ Under the hood
 
-It's a single `index.html`. Serve the folder with any static server (`npx serve .`) or deploy it on GitHub Pages or Vercel. Opening the file directly works for preview, but export needs it served over http(s).
+- **Lip-sync:** the Web Audio API reads loudness and three frequency bands every frame and picks a mouth shape. Each shape is held for at least 70 ms so the mouth doesn't flicker.
+- **Characters:** a transparent base picture, small mouth and blink patches placed over the face, and optional full pose pictures (`characters/characters.json` holds the positions).
+- **Captions:** [transformers.js](https://github.com/huggingface/transformers.js) runs Whisper on your device. The first run downloads a ~75 MB model, which the browser then caches. No audio leaves your device.
+- **Export:** every frame is drawn offline and encoded with WebCodecs, then packed into an MP4 with [mp4-muxer](https://github.com/Vanilagy/mp4-muxer) (vendored in `lib/`). Browsers without WebCodecs fall back to `MediaRecorder`.
 
-## Add your own character
+## 🚀 Run it
 
-Put `name_base.png` (transparent) plus `name_A.png`, `name_O.png`, `name_E.png` and `name_blink.png` patches in `characters/`, then add the patch positions to `characters/characters.json` and the `CHARS` list in `index.html`. An in-app uploader is coming in v0.2.
+It's a single `index.html`. Serve the folder with any static server (`npx serve .`) or deploy it on GitHub Pages or Vercel. Export needs it served over http(s).
 
-## Roadmap
+## ➕ Add a built-in character
 
-- **v0.2:** bring your own character in the app, word-by-word captions (Hindi + English), scene presets (podcast, news anchor, classroom), type a script and it speaks (your own TTS key)
-- **v0.3:** two characters in a conversation
+Put `name_base.png` (transparent) plus `name_A.png`, `name_O.png`, `name_E.png`, and `name_blink.png` patches in `characters/`. Optionally add `name_pose_wave.png`, `_point`, `_open`, and `_thumbs` full-size poses. Then add the entry to `characters/characters.json` and the `CHARS` list in `index.html` (with `"poses": [...]` for gestures).
 
-Sibling of [Rigpop](https://github.com/swapagrawal14/rigpop) and [WowKit](https://github.com/swapagrawal14/wowkit). Made with 🌷 by [Swapnil Agrawal](https://github.com/swapagrawal14). MIT licensed.
+## 🗺️ Roadmap
+
+- Type a script and it speaks (bring your own TTS key)
+- Scene presets: podcast, news anchor, classroom
+- More expressions: happy, surprised, thinking
+
+---
+
+<p align="center">Sibling of <a href="https://github.com/swapagrawal14/rigpop">Rigpop</a> and <a href="https://github.com/swapagrawal14/wowkit">WowKit</a>. Made with 🌷 by <a href="https://github.com/swapagrawal14">Swapnil Agrawal</a>. MIT licensed.</p>
