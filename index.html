@@ -46,6 +46,7 @@ small{opacity:.75}
 #rig{position:fixed;inset:0;background:rgba(31,42,156,.55);display:flex;align-items:center;justify-content:center;z-index:9;padding:12px}
 #rig .card{max-width:520px;width:100%;margin:0;text-align:center;max-height:96vh;overflow:auto}#rigCv{max-width:100%;max-height:58vh;border:3px solid var(--ink);border-radius:12px;touch-action:none;user-select:none;-webkit-user-select:none;background:repeating-conic-gradient(#eee 0 25%,#fff 0 50%) 0 0/20px 20px}
 .chars button.add{background:var(--yellow);font-size:13px}.chars button.add b{display:flex;height:80px;align-items:center;justify-content:center;font-size:38px}
+.howto{text-align:left;font-size:13px;margin-bottom:8px;border:2px dashed var(--ink);border-radius:10px;padding:6px 10px}.howto summary{font-weight:bold;cursor:pointer}.howto ol{margin:6px 0;padding-left:20px}
 .lines{list-style:none;padding:0;margin:8px 0 0}.lines li{display:flex;align-items:center;gap:6px;border:2px dashed var(--ink);border-radius:10px;padding:5px 8px;margin-bottom:5px;font-weight:bold;font-size:14px}
 .lines li span{flex:1}.lines li button{border:2px solid var(--ink);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);font-weight:bold}
 footer{text-align:center;padding:20px;font-weight:bold}
@@ -64,6 +65,11 @@ footer a{color:var(--ink)}
     <h2>1 · Pick a character</h2>
     <div class="mode"><button class="btn on" id="mSolo">🙋 Solo</button><button class="btn" id="mDuet">👯 Duet</button></div>
     <div class="chars" id="chars"></div>
+    <details class="howto" id="doodleHelp" style="margin-top:8px"><summary>🖍️ How "Your doodle" works</summary><ol>
+      <li>Tap <b>＋ Your doodle</b> and pick a drawing from your gallery.</li>
+      <li>Tap its mouth (or drag a box), then tap both eyes.</li>
+      <li>Name it, hit Done, and it talks and blinks in its own colours.</li>
+    </ol><small>Front-facing doodles with a clear mouth work best. Your last 4 stay saved on this phone.</small></details>
     <div id="duetPick" hidden>
       <div class="row"><label style="width:48px">Left</label><select id="dL"></select></div>
       <div class="row" style="margin-top:6px"><label style="width:48px">Right</label><select id="dR"></select></div>
@@ -107,6 +113,12 @@ footer a{color:var(--ink)}
     <div style="margin-top:10px"><label for="size">Character size</label><input id="size" type="range" min="50" max="130" value="92"></div>
     <div><label for="sens">Mouth sensitivity</label><input id="sens" type="range" min="1" max="10" value="5"></div>
     <div><label for="bounce">Head bounce</label><input id="bounce" type="range" min="0" max="10" value="5"></div>
+    <div style="margin-top:10px"><label>🎵 Background music</label>
+      <div class="row"><label class="btn" for="musicFile" style="font-size:13px;padding:6px 10px">🎵 Add music</label><input id="musicFile" type="file" accept="audio/*,video/*" hidden>
+      <button class="btn" id="musicDel" style="font-size:13px;padding:6px 10px" hidden>✕ Remove</button></div>
+      <div id="musicName"><small>Plays softly under the voice and dips while someone talks.</small></div>
+      <label for="musicVol">Music volume</label><input id="musicVol" type="range" min="0" max="100" value="25">
+      <label><input type="checkbox" id="duck" checked> Lower music while talking</label></div>
   </div>
   <div class="card">
     <h2>4 · Auto captions ✍️</h2>
@@ -133,6 +145,12 @@ footer a{color:var(--ink)}
 </main>
 <div id="rig" hidden><div class="card">
   <h2 id="rigTitle">Tap or drag over the mouth 👄</h2>
+  <details class="howto" open><summary>How it works</summary><ol>
+    <li>Use a <b>front-facing</b> doodle. A PNG with a see-through or plain background works best.</li>
+    <li><b>Tap the mouth</b> once, or drag a box around it.</li>
+    <li><b>Tap each eye</b> so it can blink (optional).</li>
+    <li>Name it and hit <b>Done</b>. Then add a voice like normal.</li>
+  </ol><small>If "Remove plain background" eats part of your drawing, untick it. Redo starts the marking again.</small></details>
   <canvas id="rigCv"></canvas>
   <div class="row" style="justify-content:center;margin-top:8px">
     <label><input type="checkbox" id="rigBg" checked> Remove plain background</label>
@@ -318,7 +336,8 @@ async function exportOfflineInner(){
   status("Preparing… 🎬");
   const {Muxer,ArrayBufferTarget}=await import("./lib/mp4-muxer.mjs");
   const buf=await actx.decodeAudioData(await audioBlob.arrayBuffer());
-  const fps=30,W=cv.width,H=cv.height,sr=buf.sampleRate,nch=Math.min(2,buf.numberOfChannels);
+  const fps=30,W=cv.width,H=cv.height,sr=buf.sampleRate;
+  const track=analyseBuffer(buf,fps),mixed=mixMusic(buf,track,fps),nch=mixed.nch;
   let vcfg=null;
   for(const codec of ["avc1.640033","avc1.4d0033","avc1.42003e","avc1.640028","avc1.42001f"]){
     const c={codec,width:W,height:H,bitrate:8e6,framerate:fps,avc:{format:"avc"}};
@@ -340,12 +359,12 @@ async function exportOfflineInner(){
   const CH=1024;
   for(let i=0;i<buf.length;i+=CH){
     const n=Math.min(CH,buf.length-i),data=new Float32Array(n*nch);
-    for(let c=0;c<nch;c++)data.set(buf.getChannelData(c).subarray(i,i+n),c*n);
+    for(let c=0;c<nch;c++)data.set(mixed.out[c].subarray(i,i+n),c*n);
     const ad=new AudioData({format:"f32-planar",sampleRate:sr,numberOfFrames:n,numberOfChannels:nch,timestamp:Math.round(i/sr*1e6),data});
     ae.encode(ad);ad.close();
   }
   // video
-  const track=analyseBuffer(buf,fps),saved={...state};
+  const saved={...state};
   let rnd=12345;const rand=()=>((rnd=(rnd*16807)%2147483647)/2147483647);
   state.shape="rest";state.shapeT=0;state.blinkUntil=0;state.nextBlink=1.5+rand()*2;stateB.blinkUntil=0;stateB.nextBlink=2.7+rand()*2;
   for(let f=0;f<track.length;f++){
@@ -369,6 +388,30 @@ async function exportOfflineInner(){
 }
 function stopRecording(){recording=false;setTimeout(()=>mr&&mr.state!=="inactive"&&mr.stop(),250);}
 function status(t){$("status").textContent=t}
+
+// --- background music ---
+let musicBuf=null,musicEl=null,musicGain=1;
+$("musicFile").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;ensureAudio();
+  try{musicBuf=await actx.decodeAudioData(await f.arrayBuffer());}catch(err){status("Couldn't read that music file 🙈");return;}
+  if(musicEl)musicEl.pause();musicEl=new Audio(URL.createObjectURL(f));musicEl.loop=true;
+  const ms=actx.createMediaElementSource(musicEl);ms.connect(actx.destination);ms.connect(dest);
+  $("musicName").innerHTML=`<small>🎵 ${f.name} · ${musicBuf.duration.toFixed(0)}s</small>`;$("musicDel").hidden=false;status("Music added! It plays under the voice 🎶");};
+$("musicDel").onclick=()=>{if(musicEl)musicEl.pause();musicEl=null;musicBuf=null;$("musicDel").hidden=true;$("musicName").innerHTML="<small>Plays softly under the voice and dips while someone talks.</small>";};
+function musicSync(lvl){if(!musicEl)return;
+  if(playing){if(musicEl.paused){musicEl.currentTime=0;musicEl.play().catch(()=>{});}
+    const target=($("duck").checked&&lvl>0.15)?0.4:1;musicGain+=(target-musicGain)*0.08;
+    musicEl.volume=Math.min(1,(+$("musicVol").value/100)*musicGain);}
+  else if(!musicEl.paused)musicEl.pause();}
+function mixMusic(buf,track,fps){
+  const sr=buf.sampleRate,len=buf.length,nch=Math.min(2,Math.max(buf.numberOfChannels,musicBuf?musicBuf.numberOfChannels:1));
+  const out=[];for(let c=0;c<nch;c++){const v=buf.getChannelData(Math.min(c,buf.numberOfChannels-1));out.push(Float32Array.from(v));}
+  if(!musicBuf)return{out,nch};
+  const vol=+$("musicVol").value/100,duck=$("duck").checked,ml=musicBuf.length,fade=sr*1.2;let g=1;
+  const gains=new Float32Array(track.length);for(let f=0;f<track.length;f++){const tgt=(duck&&track[f].lvl>0.15)?0.4:1;g+=(tgt-g)*0.35;gains[f]=g;}
+  for(let c=0;c<nch;c++){const m=musicBuf.getChannelData(Math.min(c,musicBuf.numberOfChannels-1)),o=out[c];
+    for(let i=0;i<len;i++){const f=Math.min(track.length-1,Math.floor(i/sr*fps));let k=vol*gains[f];if(i>len-fade)k*=(len-i)/fade;if(i<sr*0.3)k*=i/(sr*0.3);
+      o[i]=Math.max(-1,Math.min(1,o[i]+m[i%ml]*k));}}
+  return{out,nch};}
 
 // --- your own doodle ---
 let rig=null;const rigCv=$("rigCv"),rctx=rigCv.getContext("2d");
@@ -547,7 +590,7 @@ let last=performance.now(),t0=last;
 function frame(now){
   if(offline){last=now;requestAnimationFrame(frame);return;}
   const dt=Math.min(0.05,(now-last)/1000);last=now;const t=(now-t0)/1000;
-  const {lvl,shape}=analyse(dt);audioT=audioEl&&playing?audioEl.currentTime:-1;
+  const {lvl,shape}=analyse(dt);musicSync(lvl);audioT=audioEl&&playing?audioEl.currentTime:-1;
   $("meter").style.width=$("meter2").style.width=(lvl*100).toFixed(0)+"%";
   // hold shapes a little to avoid flicker
   if(shape!==state.shape&&t-state.shapeT>0.07){state.shape=shape;state.shapeT=t;}

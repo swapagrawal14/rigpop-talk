@@ -15,6 +15,10 @@
 
 Tap **＋ Your doodle** and upload any character drawing. Rigpop Talk removes a plain background, then you drag a box over the mouth and tap the two eyes. It paints talking mouth shapes in the doodle's own skin and ink colours, and adds blinks. Your last four doodles are remembered in this browser.
 
+## Background music 🎵
+
+Add any song or beat under the voice. It loops, fades in and out, and dips automatically while a character talks. Set the volume, or switch the ducking off.
+
 ## Auto captions ✍️
 
 Tap **Make captions** and Whisper (running in your browser through transformers.js) turns the voice into bouncy, word-highlighted subtitles. Pick Auto, Hindi, English, or Hinglish (Hindi written in Roman letters). Every line is editable before export. The first run downloads a ~75 MB model, which the browser then caches. No audio leaves your device.
