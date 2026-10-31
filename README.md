@@ -23,6 +23,10 @@ Add any song or beat under the voice. It loops, fades in and out, and dips autom
 
 Tap **Make captions** and Whisper (running in your browser through transformers.js) turns the voice into bouncy, word-highlighted subtitles. Pick Auto, Hindi, English, or Hinglish (Hindi written in Roman letters). Every line is editable before export. The first run downloads a ~75 MB model, which the browser then caches. No audio leaves your device.
 
+## Cute doodle pack 🌷
+
+Three more characters in a soft Korean-doodle style (thick black lines, pastel colours, blush cheeks): **Doodle Swapnil** in scrubs, **Aarav** in a hoodie, and **Biscuit** the tabby cat. Each one talks, blinks, and gestures with wave, point, open palms, and thumbs up.
+
 ## Hand gestures 🙌
 
 **Dr. Swapnil** comes with four hand poses: wave, point up, open palms, and thumbs up. While she talks, she waves hello at the start and gestures every few seconds. When captions are on, words trigger matching gestures ("hello" waves, "idea" points, "great"/"badhiya" gives a thumbs up, "why"/"kyun" opens the palms). Switch it off in Style.

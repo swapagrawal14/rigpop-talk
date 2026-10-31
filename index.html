@@ -181,7 +181,7 @@ footer a{color:var(--ink)}
 <footer>Made with 🌷 by <a href="https://github.com/swapagrawal14" target="_blank" rel="noopener">Swapnil Agrawal</a> · sibling of <a href="https://rigpop-one.vercel.app/" target="_blank" rel="noopener">Rigpop</a> · MIT</footer>
 
 <script>
-const CHARS = {"drswapnil":{"name":"Dr. Swapnil","anchor":"bottom","poses":["wave","point","open","thumbs"],"w":720,"h":964,"patches":{"A":{"x":277,"y":310,"w":166,"h":84},"O":{"x":316,"y":310,"w":95,"h":70},"E":{"x":302,"y":306,"w":113,"h":75},"blink":{"x":278,"y":240,"w":161,"h":59}}},"swapnil":{"name":"Swapnil","anchor":"bottom","w":614,"h":719,"patches":{"A":{"x":180,"y":297,"w":248,"h":144},"O":{"x":244,"y":299,"w":134,"h":93},"E":{"x":218,"y":283,"w":174,"h":104},"blink":{"x":188,"y":190,"w":230,"h":78}}},"mochi":{"name":"Mochi","w":460,"h":669,"patches":{"A":{"x":168,"y":261,"w":124,"h":135},"O":{"x":175,"y":254,"w":110,"h":94},"E":{"x":163,"y":261,"w":135,"h":75},"blink":{"x":94,"y":225,"w":274,"h":80}}},"froggo":{"name":"Froggo","w":521,"h":642,"patches":{"A":{"x":104,"y":237,"w":303,"h":161},"O":{"x":104,"y":237,"w":303,"h":103},"E":{"x":94,"y":229,"w":326,"h":131},"blink":{"x":93,"y":138,"w":324,"h":107}}}};
+const CHARS = {"drswapnil":{"name":"Dr. Swapnil","anchor":"bottom","poses":["wave","point","open","thumbs"],"w":720,"h":964,"patches":{"A":{"x":277,"y":310,"w":166,"h":84},"O":{"x":316,"y":310,"w":95,"h":70},"E":{"x":302,"y":306,"w":113,"h":75},"blink":{"x":278,"y":240,"w":161,"h":59}}},"kdswapnil":{"name":"Doodle Swapnil","poses":["wave","point","open","thumbs"],"w":720,"h":936,"patches":{"blink":{"x":284,"y":149,"w":153,"h":53},"A":{"x":322,"y":204,"w":79,"h":79},"O":{"x":326,"y":212,"w":74,"h":58},"E":{"x":311,"y":205,"w":102,"h":64}},"anchor":"bottom"},"kdaarav":{"name":"Aarav","poses":["wave","point","open","thumbs"],"w":720,"h":1072,"patches":{"blink":{"x":275,"y":232,"w":175,"h":57},"A":{"x":309,"y":292,"w":109,"h":92},"O":{"x":320,"y":301,"w":88,"h":64},"E":{"x":299,"y":293,"w":127,"h":81}},"anchor":"bottom"},"kdbiscuit":{"name":"Biscuit","poses":["wave","point","open","thumbs"],"w":720,"h":713,"patches":{"blink":{"x":269,"y":142,"w":188,"h":55},"A":{"x":307,"y":190,"w":111,"h":106},"O":{"x":317,"y":191,"w":92,"h":78},"E":{"x":285,"y":184,"w":155,"h":86}}},"swapnil":{"name":"Swapnil","anchor":"bottom","w":614,"h":719,"patches":{"A":{"x":180,"y":297,"w":248,"h":144},"O":{"x":244,"y":299,"w":134,"h":93},"E":{"x":218,"y":283,"w":174,"h":104},"blink":{"x":188,"y":190,"w":230,"h":78}}},"mochi":{"name":"Mochi","w":460,"h":669,"patches":{"A":{"x":168,"y":261,"w":124,"h":135},"O":{"x":175,"y":254,"w":110,"h":94},"E":{"x":163,"y":261,"w":135,"h":75},"blink":{"x":94,"y":225,"w":274,"h":80}}},"froggo":{"name":"Froggo","w":521,"h":642,"patches":{"A":{"x":104,"y":237,"w":303,"h":161},"O":{"x":104,"y":237,"w":303,"h":103},"E":{"x":94,"y":229,"w":326,"h":131},"blink":{"x":93,"y":138,"w":324,"h":107}}}};
 const BGS=["#faeda0","#bfe3f2","#ffd2b0","#ffc8dd","#c9f2dc","#e4d7ff","#fffaf0","#1f2a9c"];
 const $=id=>document.getElementById(id);
 const cv=$("cv"),ctx=cv.getContext("2d");
@@ -192,9 +192,10 @@ async function loadChars(){
   const meta=await fetch("characters/characters.json").then(r=>r.json()).catch(()=>null);
   if(meta) for(const k in meta){CHARS[k]=Object.assign(CHARS[k]||{name:k},{w:meta[k].w,h:meta[k].h,patches:meta[k].patches});}
   const load=s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=s;});
-  for(const k in CHARS){imgs[k]={base:await load(`characters/${k}_base.png`)};
-    for(const e of ["A","O","E","blink"]) imgs[k][e]=await load(`characters/${k}_${e}.png`);
-    if(CHARS[k].poses){imgs[k].poses={};for(const p of CHARS[k].poses)imgs[k].poses[p]=await load(`characters/${k}_pose_${p}.png`);}}
+  await Promise.all(Object.keys(CHARS).map(async k=>{imgs[k]={};const jobs=[load(`characters/${k}_base.png`).then(i=>imgs[k].base=i)];
+    for(const e of ["A","O","E","blink"]) jobs.push(load(`characters/${k}_${e}.png`).then(i=>imgs[k][e]=i));
+    if(CHARS[k].poses){imgs[k].poses={};for(const p of CHARS[k].poses)jobs.push(load(`characters/${k}_pose_${p}.png`).then(i=>imgs[k].poses[p]=i));}
+    await Promise.all(jobs);}));
   const box=$("chars");
   for(const k in CHARS){const b=document.createElement("button");b.innerHTML=`<img src="characters/${k}_base.png" alt="">${CHARS[k].name}`;
     b.onclick=()=>{cur=k;[...box.children].forEach(c=>c.classList.remove("on"));b.classList.add("on")};
