@@ -44,7 +44,7 @@ small{opacity:.75}
 .mode{display:flex;gap:6px;margin-bottom:10px}.mode button{flex:1}.mode button.on{background:var(--pink);color:#fff}
 .caps{max-height:220px;overflow:auto;margin-top:8px}.caps input{margin-bottom:5px;padding:6px;font-size:14px}
 #rig{position:fixed;inset:0;background:rgba(31,42,156,.55);display:flex;align-items:center;justify-content:center;z-index:9;padding:12px}
-#rig .card{max-width:520px;width:100%;margin:0;text-align:center}#rigCv{max-width:100%;max-height:60vh;border:3px solid var(--ink);border-radius:12px;touch-action:none;background:repeating-conic-gradient(#eee 0 25%,#fff 0 50%) 0 0/20px 20px}
+#rig .card{max-width:520px;width:100%;margin:0;text-align:center;max-height:96vh;overflow:auto}#rigCv{max-width:100%;max-height:58vh;border:3px solid var(--ink);border-radius:12px;touch-action:none;user-select:none;-webkit-user-select:none;background:repeating-conic-gradient(#eee 0 25%,#fff 0 50%) 0 0/20px 20px}
 .chars button.add{background:var(--yellow);font-size:13px}.chars button.add b{display:flex;height:80px;align-items:center;justify-content:center;font-size:38px}
 .lines{list-style:none;padding:0;margin:8px 0 0}.lines li{display:flex;align-items:center;gap:6px;border:2px dashed var(--ink);border-radius:10px;padding:5px 8px;margin-bottom:5px;font-weight:bold;font-size:14px}
 .lines li span{flex:1}.lines li button{border:2px solid var(--ink);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);font-weight:bold}
@@ -132,7 +132,7 @@ footer a{color:var(--ink)}
 </section>
 </main>
 <div id="rig" hidden><div class="card">
-  <h2 id="rigTitle">Drag a box over the mouth 👄</h2>
+  <h2 id="rigTitle">Tap or drag over the mouth 👄</h2>
   <canvas id="rigCv"></canvas>
   <div class="row" style="justify-content:center;margin-top:8px">
     <label><input type="checkbox" id="rigBg" checked> Remove plain background</label>
@@ -393,15 +393,17 @@ function rigDraw(){if(!rig)return;rctx.clearRect(0,0,rigCv.width,rigCv.height);r
   rctx.lineWidth=Math.max(3,rigCv.width/150);rctx.strokeStyle="#ff5fa2";rctx.setLineDash([10,6]);
   const m=rig.drag||rig.mouth;if(m)rctx.strokeRect(m.x,m.y,m.w,m.h);rctx.setLineDash([]);
   rctx.fillStyle="#ff5fa2";for(const e of rig.eyes){rctx.beginPath();rctx.arc(e.x,e.y,rigCv.width/60,0,7);rctx.fill();}
-  $("rigTitle").textContent=rig.step==="mouth"?"Drag a box over the mouth 👄":rig.step==="eyes"?`Tap the middle of each eye 👀 (${rig.eyes.length}/2)`:"All set! Name it and tap Done ✨";
-  $("rigSkip").hidden=rig.step!=="eyes";$("rigDone").disabled=rig.step!=="done";}
+  $("rigTitle").textContent=rig.step==="mouth"?"Tap or drag over the mouth 👄":rig.step==="eyes"?`Now tap each eye 👀 (${rig.eyes.length}/2), or hit Done`:"All set! Name it and tap Done ✨";
+  $("rigSkip").hidden=rig.step!=="eyes";$("rigDone").disabled=!rig.mouth;}
 const rp=e=>{const r=rigCv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*rigCv.width,y:(e.clientY-r.top)/r.height*rigCv.height}};
 rigCv.onpointerdown=e=>{if(!rig)return;const p=rp(e);
   if(rig.step==="mouth"){rig.start=p;rig.drag={x:p.x,y:p.y,w:1,h:1};rigCv.setPointerCapture(e.pointerId);}
   else if(rig.step==="eyes"){rig.eyes.push(p);if(rig.eyes.length===2)rig.step="done";}rigDraw();};
 rigCv.onpointermove=e=>{if(!rig||!rig.drag)return;const p=rp(e),a=rig.start;rig.drag={x:Math.min(a.x,p.x),y:Math.min(a.y,p.y),w:Math.abs(p.x-a.x),h:Math.abs(p.y-a.y)};rigDraw();};
 rigCv.onpointerup=()=>{if(!rig||!rig.drag)return;const m=rig.drag;rig.drag=null;
-  if(m.w>8&&m.h>4){rig.mouth=m;rig.step="eyes";}rigDraw();};
+  if(m.w>8&&m.h>4)rig.mouth=m;
+  else{const w=rigCv.width*0.14;rig.mouth={x:rig.start.x-w/2,y:rig.start.y-w*0.3,w,h:w*0.6};}
+  rig.step="eyes";rigDraw();};
 $("rigBack").onclick=()=>{if(!rig)return;rig.mouth=null;rig.eyes=[];rig.step="mouth";rigDraw();};
 $("rigSkip").onclick=()=>{rig.step="done";rigDraw();};
 $("rigCancel").onclick=()=>{$("rig").hidden=true;rig=null;};
