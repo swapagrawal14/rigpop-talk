@@ -11,6 +11,10 @@
 3. **Style it:** background colour or your own image, dots or stars pattern, an optional title sticker, 9:16 / 1:1 / 16:9.
 4. **Export:** you get a proper MP4 with the audio baked in, rendered faster than real time, with the correct length in any gallery app.
 
+## Duet mode 👯
+
+Make two characters talk to each other. Tap **Duet**, pick who stands on the left and right, then add the conversation line by line: choose who says it, and record or upload that line. You can voice both sides yourself. The speaker lip-syncs and leans in a little while the other one listens and blinks. Lines can be reordered, deleted, or switched to the other character. Export works the same way.
+
 ## Under the hood
 
 - **Lip sync:** the Web Audio API reads loudness and three frequency bands every frame and picks a mouth shape: rest, **A** (open), **O** (round), **E** (wide/teeth). Shapes are held for at least 70 ms so the mouth doesn't flicker.
