@@ -113,6 +113,7 @@ footer a{color:var(--ink)}
     <div style="margin-top:10px"><label for="size">Character size</label><input id="size" type="range" min="50" max="130" value="92"></div>
     <div><label for="sens">Mouth sensitivity</label><input id="sens" type="range" min="1" max="10" value="5"></div>
     <div><label for="bounce">Head bounce</label><input id="bounce" type="range" min="0" max="10" value="5"></div>
+    <label><input type="checkbox" id="gest" checked> 🙌 Hand gestures (Dr. Swapnil)</label>
     <div style="margin-top:10px"><label>🎵 Background music</label>
       <div class="row"><label class="btn" for="musicFile" style="font-size:13px;padding:6px 10px">🎵 Add music</label><input id="musicFile" type="file" accept="audio/*,video/*" hidden>
       <button class="btn" id="musicDel" style="font-size:13px;padding:6px 10px" hidden>✕ Remove</button></div>
@@ -165,11 +166,11 @@ footer a{color:var(--ink)}
 <footer>Made with 🌷 by <a href="https://github.com/swapagrawal14" target="_blank" rel="noopener">Swapnil Agrawal</a> · sibling of <a href="https://rigpop-one.vercel.app/" target="_blank" rel="noopener">Rigpop</a> · MIT</footer>
 
 <script>
-const CHARS = {"swapnil":{"name":"Swapnil","anchor":"bottom","w":614,"h":719,"patches":{"A":{"x":180,"y":297,"w":248,"h":144},"O":{"x":244,"y":299,"w":134,"h":93},"E":{"x":218,"y":283,"w":174,"h":104},"blink":{"x":188,"y":190,"w":230,"h":78}}},"mochi":{"name":"Mochi","w":460,"h":669,"patches":{"A":{"x":168,"y":261,"w":124,"h":135},"O":{"x":175,"y":254,"w":110,"h":94},"E":{"x":163,"y":261,"w":135,"h":75},"blink":{"x":94,"y":225,"w":274,"h":80}}},"froggo":{"name":"Froggo","w":521,"h":642,"patches":{"A":{"x":104,"y":237,"w":303,"h":161},"O":{"x":104,"y":237,"w":303,"h":103},"E":{"x":94,"y":229,"w":326,"h":131},"blink":{"x":93,"y":138,"w":324,"h":107}}}};
+const CHARS = {"drswapnil":{"name":"Dr. Swapnil","anchor":"bottom","poses":["wave","point","open","thumbs"],"w":720,"h":964,"patches":{"A":{"x":277,"y":310,"w":166,"h":84},"O":{"x":316,"y":310,"w":95,"h":70},"E":{"x":302,"y":306,"w":113,"h":75},"blink":{"x":278,"y":240,"w":161,"h":59}}},"swapnil":{"name":"Swapnil","anchor":"bottom","w":614,"h":719,"patches":{"A":{"x":180,"y":297,"w":248,"h":144},"O":{"x":244,"y":299,"w":134,"h":93},"E":{"x":218,"y":283,"w":174,"h":104},"blink":{"x":188,"y":190,"w":230,"h":78}}},"mochi":{"name":"Mochi","w":460,"h":669,"patches":{"A":{"x":168,"y":261,"w":124,"h":135},"O":{"x":175,"y":254,"w":110,"h":94},"E":{"x":163,"y":261,"w":135,"h":75},"blink":{"x":94,"y":225,"w":274,"h":80}}},"froggo":{"name":"Froggo","w":521,"h":642,"patches":{"A":{"x":104,"y":237,"w":303,"h":161},"O":{"x":104,"y":237,"w":303,"h":103},"E":{"x":94,"y":229,"w":326,"h":131},"blink":{"x":93,"y":138,"w":324,"h":107}}}};
 const BGS=["#faeda0","#bfe3f2","#ffd2b0","#ffc8dd","#c9f2dc","#e4d7ff","#fffaf0","#1f2a9c"];
 const $=id=>document.getElementById(id);
 const cv=$("cv"),ctx=cv.getContext("2d");
-let cur="swapnil",imgs={},bg=BGS[0],bgImg=null,state={shape:"rest",shapeT:0,blinkUntil:0,nextBlink:2,lvl:0,peak:0.05};
+let cur="drswapnil",imgs={},bg=BGS[0],bgImg=null,state={shape:"rest",shapeT:0,blinkUntil:0,nextBlink:2,lvl:0,peak:0.05};
 let actx,analyser,srcNode,dest,audioEl,mediaUrl,liveStream,liveSrc,playing=false,recording=false;
 
 async function loadChars(){
@@ -177,7 +178,8 @@ async function loadChars(){
   if(meta) for(const k in meta){CHARS[k]=Object.assign(CHARS[k]||{name:k},{w:meta[k].w,h:meta[k].h,patches:meta[k].patches});}
   const load=s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=s;});
   for(const k in CHARS){imgs[k]={base:await load(`characters/${k}_base.png`)};
-    for(const e of ["A","O","E","blink"]) imgs[k][e]=await load(`characters/${k}_${e}.png`);}
+    for(const e of ["A","O","E","blink"]) imgs[k][e]=await load(`characters/${k}_${e}.png`);
+    if(CHARS[k].poses){imgs[k].poses={};for(const p of CHARS[k].poses)imgs[k].poses[p]=await load(`characters/${k}_pose_${p}.png`);}}
   const box=$("chars");
   for(const k in CHARS){const b=document.createElement("button");b.innerHTML=`<img src="characters/${k}_base.png" alt="">${CHARS[k].name}`;
     b.onclick=()=>{cur=k;[...box.children].forEach(c=>c.classList.remove("on"));b.classList.add("on")};
@@ -196,7 +198,7 @@ function ensureAudio(){
 }
 let audioBlob=null,offline=false;
 // --- duet mode ---
-let duet=false,duetL="swapnil",duetR="mochi",lines=[],segs=[],audioT=0,stateB={blinkUntil:0,nextBlink:3.1};
+let duet=false,duetL="drswapnil",duetR="mochi",lines=[],segs=[],audioT=0,stateB={blinkUntil:0,nextBlink:3.1};
 $("mSolo").onclick=()=>setMode(false);$("mDuet").onclick=()=>setMode(true);
 function setMode(d){duet=d;$("mSolo").classList.toggle("on",!d);$("mDuet").classList.toggle("on",d);
   $("chars").hidden=d;$("duetPick").hidden=!d;$("duetCard").hidden=!d;$("soloCard").hidden=d;
@@ -365,7 +367,8 @@ async function exportOfflineInner(){
   }
   // video
   const saved={...state};
-  let rnd=12345;const rand=()=>((rnd=(rnd*16807)%2147483647)/2147483647);
+  let rnd=12345;const rand=()=>((rnd=(rnd*16807)%2147483647)/2147483647);gRand=rand;
+  for(const g of [gestA,gestB])Object.assign(g,{pose:null,a:0,until:0,next:0.8,talkT:-9,waved:false});
   state.shape="rest";state.shapeT=0;state.blinkUntil=0;state.nextBlink=1.5+rand()*2;stateB.blinkUntil=0;stateB.nextBlink=2.7+rand()*2;
   for(let f=0;f<track.length;f++){
     if(encErr)throw encErr;
@@ -380,7 +383,7 @@ async function exportOfflineInner(){
     if(f%15===0){status(`Making your video… ${Math.round(f/track.length*100)}%`);await new Promise(r=>setTimeout(r,0));}
   }
   await ve.flush();await ae.flush();if(encErr)throw encErr;
-  muxer.finalize();Object.assign(state,saved,{shape:"rest"});
+  muxer.finalize();Object.assign(state,saved,{shape:"rest"});gRand=Math.random;
   const blob=new Blob([target.buffer],{type:"video/mp4"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`rigpop-talk-${duet?duetL+"-"+duetR:cur}.mp4`;a.click();
   status(`Done! Saved rigpop-talk-${duet?duetL+"-"+duetR:cur}.mp4 (${buf.duration.toFixed(1)}s) 🎉`);
@@ -388,6 +391,26 @@ async function exportOfflineInner(){
 }
 function stopRecording(){recording=false;setTimeout(()=>mr&&mr.state!=="inactive"&&mr.stop(),250);}
 function status(t){$("status").textContent=t}
+
+// --- hand gestures ---
+let gRand=Math.random;const gestA={pose:null,a:0,until:0,next:0.6,talkT:-9},gestB={pose:null,a:0,until:0,next:1.2,talkT:-9};
+const GEST_WORDS=[[/^(hello|hi|hii+|hey|namaste|namaskar|bye|welcome|नमस्ते|हेलो|हाय)$/i,"wave"],
+  [/^(idea|tip|first|important|remember|listen|one|ek|secret|fact|सुनो|पहला|ज़रूरी|जरूरी)$/i,"point"],
+  [/^(great|awesome|best|good|perfect|amazing|nice|yes|done|accha|achha|badhiya|mast|बढ़िया|अच्छा|बेस्ट)$/i,"thumbs"],
+  [/^(so|why|what|how|but|because|kyun|kya|kaise|toh|to|लेकिन|क्यों|क्या|कैसे|तो)$/i,"open"]];
+function currentWord(){if(!captions.length||audioT<0)return null;const g=captions.find(x=>audioT>=x.start&&audioT<x.end);if(!g)return null;
+  const w=g.text.trim().split(/\s+/);const i=Math.min(w.length-1,Math.floor((audioT-g.start)/Math.max(0.01,g.end-g.start)*w.length));return w[i].replace(/[^\p{L}\p{M}]/gu,"");}
+function gestureStep(g,t,talking,poses){
+  if(talking&&g.talkT<0)g.talkT=t;if(!talking&&g.pose===null)g.talkT=-1;
+  if(g.pose&&t>g.until)g.pose=null;
+  if(!g.pose&&talking){const w=currentWord();let pick=null;
+    if(w)for(const [re,p] of GEST_WORDS)if(re.test(w)&&poses[p]){pick=p;break;}
+    if(!pick&&audioT>=0&&audioT<1.5&&poses.wave&&!g.waved){pick="wave";g.waved=true;}
+    if(!pick&&t>g.next){const r=gRand();pick=r<0.45?"open":r<0.72?"point":r<0.88?"thumbs":"wave";}
+    if(pick){g.pose=pick;g.until=t+1.1+gRand()*1.1;g.next=g.until+1.2+gRand()*2.4;}}
+  if(audioT<0||audioT<0.05)g.waved=false;
+  g.a+=((g.pose?1:0)-g.a)*0.35;if(g.pose)g.last=g.pose;
+}
 
 // --- background music ---
 let musicBuf=null,musicEl=null,musicGain=1;
@@ -627,16 +650,16 @@ function draw(t,lvl){
     top=by+bh+H*0.02;
   }
   const avail=H-top,size=+$("size").value/100;
-  if(!duet){drawChar(cur,W/2,Math.min(W*0.95/CHARS[cur].w,avail*0.82/CHARS[cur].h)*size,avail,t,lvl,state.shape,t<state.blinkUntil,0);drawCaption(audioT);return;}
+  if(!duet){drawChar(cur,W/2,Math.min(W*0.95/CHARS[cur].w,avail*0.82/CHARS[cur].h)*size,avail,t,lvl,state.shape,t<state.blinkUntil,0,gestA);drawCaption(audioT);return;}
   const who=audioT>=0?speakerAt(audioT):null;
   [["L",duetL,W*0.27],["R",duetR,W*0.73]].forEach(([side,k,cx],i)=>{const c=CHARS[k];if(!c)return;
     const talking=who===side;
     const s=Math.min(W*0.47/c.w,avail*0.6/c.h)*size*(talking?1.05:1);
     const blink=side==="L"?t<state.blinkUntil:t<stateB.blinkUntil;
-    drawChar(k,cx,s,avail,t+i*1.7,talking?lvl:0,talking?state.shape:"rest",blink,i);});
+    drawChar(k,cx,s,avail,t+i*1.7,talking?lvl:0,talking?state.shape:"rest",blink,i,side==="L"?gestA:gestB);});
   drawCaption(audioT);
 }
-function drawChar(k,cx,s,avail,t,lvl,shape,blinking,idx){
+function drawChar(k,cx,s,avail,t,lvl,shape,blinking,idx,gs){
   const W=cv.width,H=cv.height,c=CHARS[k],im=imgs[k];if(!c||!im||!im.base)return;
   const bounce=+$("bounce").value/5;
   const breathe=Math.sin(t*2.1)*0.006;
@@ -649,7 +672,9 @@ function drawChar(k,cx,s,avail,t,lvl,shape,blinking,idx){
     ctx.save();ctx.fillStyle="rgba(31,42,156,.16)";ctx.beginPath();ctx.ellipse(cx,bottom-4,c.w*s*0.36*(1-lift/400),c.w*s*0.06,0,0,7);ctx.fill();ctx.restore();
     bottom-=lift;}
   ctx.save();ctx.translate(cx,bottom);ctx.rotate(rot);ctx.scale(sc,sc);ctx.translate(-c.w/2,-c.h);
-  ctx.drawImage(im.base,0,0);
+  let body=im.base;
+  if(im.poses&&gs&&$("gest").checked){gestureStep(gs,t,lvl>0.12||shape!=="rest",im.poses);if(gs.pose&&im.poses[gs.pose])body=im.poses[gs.pose];}
+  ctx.drawImage(body,0,0);
   const P=c.patches;
   if(c.custom)drawCustom(c,shape,blinking);
   if(shape!=="rest"&&im[shape]&&P[shape]){const p=P[shape];ctx.drawImage(im[shape],p.x,p.y,p.w,p.h);}

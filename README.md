@@ -23,6 +23,10 @@ Add any song or beat under the voice. It loops, fades in and out, and dips autom
 
 Tap **Make captions** and Whisper (running in your browser through transformers.js) turns the voice into bouncy, word-highlighted subtitles. Pick Auto, Hindi, English, or Hinglish (Hindi written in Roman letters). Every line is editable before export. The first run downloads a ~75 MB model, which the browser then caches. No audio leaves your device.
 
+## Hand gestures 🙌
+
+**Dr. Swapnil** comes with four hand poses: wave, point up, open palms, and thumbs up. While she talks, she waves hello at the start and gestures every few seconds. When captions are on, words trigger matching gestures ("hello" waves, "idea" points, "great"/"badhiya" gives a thumbs up, "why"/"kyun" opens the palms). Switch it off in Style.
+
 ## Duet mode 👯
 
 Make two characters talk to each other. Tap **Duet**, pick who stands on the left and right, then add the conversation line by line: choose who says it, and record or upload that line. You can voice both sides yourself. The speaker lip-syncs and leans in a little while the other one listens and blinks. Lines can be reordered, deleted, or switched to the other character. Export works the same way.
