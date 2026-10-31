@@ -42,6 +42,7 @@ canvas{max-width:100%;max-height:72vh;border:3px solid var(--ink);border-radius:
 .meter i{display:block;height:100%;width:0;background:var(--pink);transition:width .05s}
 small{opacity:.75}
 .mode{display:flex;gap:6px;margin-bottom:10px}.mode button{flex:1}.mode button.on{background:var(--pink);color:#fff}
+.caps{max-height:220px;overflow:auto;margin-top:8px}.caps input{margin-bottom:5px;padding:6px;font-size:14px}
 .lines{list-style:none;padding:0;margin:8px 0 0}.lines li{display:flex;align-items:center;gap:6px;border:2px dashed var(--ink);border-radius:10px;padding:5px 8px;margin-bottom:5px;font-weight:bold;font-size:14px}
 .lines li span{flex:1}.lines li button{border:2px solid var(--ink);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);font-weight:bold}
 footer{text-align:center;padding:20px;font-weight:bold}
@@ -103,6 +104,19 @@ footer a{color:var(--ink)}
     <div style="margin-top:10px"><label for="size">Character size</label><input id="size" type="range" min="50" max="130" value="92"></div>
     <div><label for="sens">Mouth sensitivity</label><input id="sens" type="range" min="1" max="10" value="5"></div>
     <div><label for="bounce">Head bounce</label><input id="bounce" type="range" min="0" max="10" value="5"></div>
+  </div>
+  <div class="card">
+    <h2>4 · Auto captions ✍️</h2>
+    <small>Turns the voice into subtitles, right on your phone. First time downloads a ~75 MB speech model, then it's cached.</small>
+    <div class="row" style="margin-top:8px">
+      <select id="capLang"><option value="">Auto language</option><option value="hindi">हिंदी Hindi</option><option value="english">English</option><option value="hinglish">Hinglish (Roman)</option></select>
+      <button class="btn yellow" id="capGo" disabled>✨ Make captions</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <label><input type="checkbox" id="capOn" checked> Show captions</label>
+      <select id="capPos"><option value="mid">Middle</option><option value="top">Top</option><option value="bottom">Bottom</option></select>
+    </div>
+    <div class="caps" id="caps"></div>
   </div>
 </section>
 <section class="stage">
@@ -205,7 +219,7 @@ function useAudioBlob(blob,name){
   srcNode.connect(analyser);srcNode.connect(actx.destination);srcNode.connect(dest);
   audioEl.onended=()=>{playing=false;$("play").textContent="▶ Preview";if(recording)stopRecording();};
   audioEl.onloadedmetadata=()=>{$("audioName").innerHTML=`<small>🎧 ${name} · ${audioEl.duration.toFixed(1)}s</small>`};
-  $("play").disabled=false;$("export").disabled=false;
+  $("play").disabled=false;$("export").disabled=false;$("capGo").disabled=false;captions=[];renderCaps();
   status("Voice loaded! Hit Preview, or Export to get your video 🎬");
 }
 $("file").onchange=e=>{const f=e.target.files[0];if(f)useAudioBlob(f,f.name)};
@@ -340,6 +354,89 @@ async function exportOfflineInner(){
 function stopRecording(){recording=false;setTimeout(()=>mr&&mr.state!=="inactive"&&mr.stop(),250);}
 function status(t){$("status").textContent=t}
 
+// --- captions (Whisper in the browser via transformers.js) ---
+let captions=[],asr=null;
+async function getASR(){
+  if(asr)return asr;
+  const T=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3");
+  const progress={};
+  asr=await T.pipeline("automatic-speech-recognition","onnx-community/whisper-base",{dtype:"q8",device:"wasm",
+    progress_callback:p=>{if(p.status==="progress"&&p.total){progress[p.file]=[p.loaded,p.total];
+      let l=0,t=0;for(const k in progress){l+=progress[k][0];t+=progress[k][1];}status(`Downloading speech model… ${Math.round(l/t*100)}%`);}}});
+  return asr;
+}
+$("capGo").onclick=async()=>{
+  if(!audioBlob)return;const btn=$("capGo");btn.disabled=true;
+  try{
+    status("Loading speech model… ⏳");const pipe=await getASR();
+    ensureAudio();const buf=await actx.decodeAudioData(await audioBlob.arrayBuffer());
+    const oc=new OfflineAudioContext(1,Math.ceil(buf.duration*16000),16000);const src=oc.createBufferSource();src.buffer=buf;src.connect(oc.destination);src.start();
+    const pcm=(await oc.startRendering()).getChannelData(0);
+    status("Listening and writing captions… 🎧");await new Promise(r=>setTimeout(r,50));
+    const lang=$("capLang").value;
+    const opt={return_timestamps:true,chunk_length_s:30,stride_length_s:5,task:"transcribe"};
+    if(lang==="hinglish"){opt.language="hindi";opt.task="transcribe";}else if(lang)opt.language=lang;
+    let out=await pipe(pcm,opt);
+    let chunks=(out.chunks&&out.chunks.length?out.chunks:[{text:out.text,timestamp:[0,buf.duration]}]);
+    if(lang==="hinglish")chunks=chunks.map(c=>({...c,text:romanize(c.text)}));
+    captions=buildCaptions(chunks,buf.duration);renderCaps();
+    status(captions.length?"Captions ready! Tap any line to fix a word ✏️":"I couldn't hear any words 🙈");
+  }catch(e){console.error(e);status("Captions failed to load. Check your internet and try again 🙈");}
+  btn.disabled=false;
+};
+function buildCaptions(chunks,dur){
+  const groups=[];
+  for(const c of chunks){
+    const words=c.text.trim().split(/\s+/).filter(Boolean);if(!words.length)continue;
+    let [a,b]=c.timestamp;a=a||0;b=(b==null||b<=a)?Math.min(dur,a+words.length*0.4):b;
+    for(let i=0;i<words.length;i+=4){
+      const ws=words.slice(i,i+4),n=words.length;
+      groups.push({start:a+(b-a)*i/n,end:a+(b-a)*Math.min(n,i+4)/n,text:ws.join(" ")});
+    }
+  }
+  return groups;
+}
+function renderCaps(){const box=$("caps");box.innerHTML="";
+  captions.forEach(g=>{const i=document.createElement("input");i.type="text";i.value=g.text;i.oninput=()=>g.text=i.value;box.appendChild(i);});}
+// tiny Devanagari -> Roman (Hinglish) transliteration
+function romanize(t){
+  const V={"अ":"a","आ":"aa","इ":"i","ई":"i","उ":"u","ऊ":"oo","ऋ":"ri","ए":"e","ऐ":"ai","ओ":"o","औ":"au"};
+  const M={"ा":"a","ि":"i","ी":"ee","ु":"u","ू":"oo","ृ":"ri","े":"e","ै":"ai","ो":"o","ौ":"au","ॉ":"o","ॅ":"e"};
+  const C={"क":"k","ख":"kh","ग":"g","घ":"gh","ङ":"n","च":"ch","छ":"chh","ज":"j","झ":"jh","ञ":"n","ट":"t","ठ":"th","ड":"d","ढ":"dh","ण":"n","त":"t","थ":"th","द":"d","ध":"dh","न":"n","प":"p","फ":"f","ब":"b","भ":"bh","म":"m","य":"y","र":"r","ल":"l","व":"v","श":"sh","ष":"sh","स":"s","ह":"h","क़":"q","ख़":"kh","ग़":"g","ज़":"z","ड़":"d","ढ़":"rh","फ़":"f"};
+  t=t.normalize("NFC");let o="";const ch=[...t];
+  for(let i=0;i<ch.length;i++){const c=ch[i],nx=ch[i+1];
+    if(C[c]!==undefined){let cc=C[c];if(nx==="\u093C"){i++;}
+      const n2=ch[i+1];
+      if(n2==="्"){o+=cc;i++;}
+      else if(M[n2]!==undefined){const fin=!ch[i+2]||/[\s.,!?।]/.test(ch[i+2]);o+=cc+(n2==="ा"?(fin?"a":"aa"):n2==="ी"&&fin?"i":M[n2]);i++;}
+      else{const end=!n2||/[\s.,!?।]/.test(n2);o+=cc+(end?"":"a");}
+    }else if(V[c]!==undefined)o+=V[c];
+    else if(c==="ं"||c==="ँ")o+="n";else if(c==="ः")o+="h";else if(c==="।")o+=".";else if(M[c]!==undefined)o+=M[c];
+    else o+=c;}
+  return o;
+}
+function drawCaption(t){
+  if(!$("capOn").checked||!captions.length||t<0)return;
+  const g=captions.find(x=>t>=x.start&&t<x.end+0.15);if(!g||!g.text.trim())return;
+  const W=cv.width,H=cv.height,words=g.text.trim().split(/\s+/);
+  const fs=Math.round(Math.min(W,H)*(W<H?0.075:0.06));
+  ctx.font=`900 ${fs}px "Trebuchet MS","Noto Sans Devanagari",system-ui,sans-serif`;ctx.textAlign="left";ctx.textBaseline="middle";
+  const lines=[];let cur=[];for(const w of words){const tt=[...cur,w].join(" ");if(ctx.measureText(tt).width>W*0.86&&cur.length){lines.push(cur);cur=[w]}else cur.push(w);}if(cur.length)lines.push(cur);
+  const pos=$("capPos").value,lh=fs*1.25;
+  let y=pos==="top"?H*0.2:pos==="bottom"?H*0.86:(W<H?H*0.47:H*0.5);
+  y-=(lines.length-1)*lh/2;
+  const active=Math.min(words.length-1,Math.floor((t-g.start)/Math.max(0.01,g.end-g.start)*words.length));
+  let wi=0;const space=ctx.measureText(" ").width;
+  ctx.lineJoin="round";ctx.lineWidth=fs*0.22;ctx.strokeStyle="#1f2a9c";
+  for(const ln of lines){
+    const tw=ctx.measureText(ln.join(" ")).width;let x=(W-tw)/2;
+    for(const w of ln){const ww=ctx.measureText(w).width;
+      ctx.save();if(wi===active){ctx.translate(x+ww/2,y);ctx.scale(1.08,1.08);ctx.translate(-(x+ww/2),-y);}
+      ctx.strokeText(w,x,y);ctx.fillStyle=wi===active?"#ffd94a":"#ffffff";ctx.fillText(w,x,y);ctx.restore();
+      x+=ww+space;wi++;}
+    y+=lh;}
+}
+
 // --- lip sync ---
 function pickShape(L,lo,mid,hi){
   if(L<0.16)return "rest";
@@ -402,13 +499,14 @@ function draw(t,lvl){
     top=by+bh+H*0.02;
   }
   const avail=H-top,size=+$("size").value/100;
-  if(!duet){drawChar(cur,W/2,Math.min(W*0.95/CHARS[cur].w,avail*0.82/CHARS[cur].h)*size,avail,t,lvl,state.shape,t<state.blinkUntil,0);return;}
+  if(!duet){drawChar(cur,W/2,Math.min(W*0.95/CHARS[cur].w,avail*0.82/CHARS[cur].h)*size,avail,t,lvl,state.shape,t<state.blinkUntil,0);drawCaption(audioT);return;}
   const who=audioT>=0?speakerAt(audioT):null;
   [["L",duetL,W*0.27],["R",duetR,W*0.73]].forEach(([side,k,cx],i)=>{const c=CHARS[k];if(!c)return;
     const talking=who===side;
     const s=Math.min(W*0.47/c.w,avail*0.6/c.h)*size*(talking?1.05:1);
     const blink=side==="L"?t<state.blinkUntil:t<stateB.blinkUntil;
     drawChar(k,cx,s,avail,t+i*1.7,talking?lvl:0,talking?state.shape:"rest",blink,i);});
+  drawCaption(audioT);
 }
 function drawChar(k,cx,s,avail,t,lvl,shape,blinking,idx){
   const W=cv.width,H=cv.height,c=CHARS[k],im=imgs[k];if(!c||!im||!im.base)return;
