@@ -9,16 +9,14 @@
 1. **Pick a character:** Swapnil (the maker, drawn in blue-ink comic style), Mochi the bunny-cat, or Froggo.
 2. **Add a voice:** upload audio (mp3, wav, m4a, or even a video file), record from your mic, or go **Live mic** and watch the character copy you in real time.
 3. **Style it:** background colour or your own image, dots or stars pattern, an optional title sticker, 9:16 / 1:1 / 16:9.
-4. **Export:** you get an MP4 (Safari, newer Chrome) or WebM video with the audio baked in.
+4. **Export:** you get a proper MP4 with the audio baked in, rendered faster than real time, with the correct length in any gallery app.
 
 ## Under the hood
 
 - **Lip sync:** the Web Audio API reads loudness and three frequency bands every frame and picks a mouth shape: rest, **A** (open), **O** (round), **E** (wide/teeth). Shapes are held for at least 70 ms so the mouth doesn't flicker.
 - **Life:** random blinks every 2 to 5.5 s, breathing, and a head bob that follows how loud you are.
 - **Characters:** each one is a transparent base picture plus small mouth and blink patches that sit exactly over the face (`characters/characters.json` holds the positions).
-- **Export:** `canvas.captureStream()` plus the audio track goes into `MediaRecorder`.
-
-Keep the tab open and visible while exporting; browsers pause drawing in background tabs.
+- **Export:** every frame is drawn offline and encoded with WebCodecs (H.264 + AAC), then packed into an MP4 with [mp4-muxer](https://github.com/Vanilagy/mp4-muxer) (vendored in `lib/`). Browsers without WebCodecs fall back to `MediaRecorder`.
 
 ## Run it
 

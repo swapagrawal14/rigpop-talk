@@ -127,8 +127,9 @@ function ensureAudio(){
   analyser=actx.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=0.35;
   dest=actx.createMediaStreamDestination();
 }
+let audioBlob=null,offline=false;
 function useAudioBlob(blob,name){
-  ensureAudio();stopLive();
+  ensureAudio();stopLive();audioBlob=blob;
   if(audioEl){audioEl.pause();}
   if(mediaUrl)URL.revokeObjectURL(mediaUrl);
   mediaUrl=URL.createObjectURL(blob);
@@ -170,6 +171,9 @@ $("play").onclick=async()=>{
 let mr,chunks;
 $("export").onclick=async()=>{
   if(!audioEl||recording)return;await actx.resume();
+  if(window.VideoEncoder&&window.AudioEncoder&&audioBlob){
+    try{await exportOffline();return;}catch(err){console.warn("Fast export failed, using recorder",err);recording=false;}
+  }
   const vs=cv.captureStream(30);
   const stream=new MediaStream([...vs.getVideoTracks(),...dest.stream.getAudioTracks()]);
   const types=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=avc1,mp4a","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
@@ -184,10 +188,97 @@ $("export").onclick=async()=>{
   mr.start(100);await new Promise(r=>setTimeout(r,150));await audioEl.play();playing=true;
   status("Recording your video… keep this tab open ⏺");
 };
+
+// --- fast export: renders every frame and writes a proper MP4 (correct length in any gallery) ---
+function fft(re,im){const n=re.length;for(let i=1,j=0;i<n;i++){let b=n>>1;for(;j&b;b>>=1)j^=b;j^=b;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]];}}
+  for(let len=2;len<=n;len<<=1){const a=-2*Math.PI/len,wr=Math.cos(a),wi=Math.sin(a);for(let i=0;i<n;i+=len){let cr=1,ci=0;for(let k=0;k<len/2;k++){const ur=re[i+k],ui=im[i+k],vr=re[i+k+len/2]*cr-im[i+k+len/2]*ci,vi=re[i+k+len/2]*ci+im[i+k+len/2]*cr;re[i+k]=ur+vr;im[i+k]=ui+vi;re[i+k+len/2]=ur-vr;im[i+k+len/2]=ui-vi;const t=cr*wr-ci*wi;ci=cr*wi+ci*wr;cr=t;}}}}
+function analyseBuffer(buf,fps){
+  const N=1024,sr=buf.sampleRate,ch=buf.numberOfChannels,len=buf.length,mono=new Float32Array(len);
+  for(let c=0;c<ch;c++){const d=buf.getChannelData(c);for(let i=0;i<len;i++)mono[i]+=d[i]/ch;}
+  const frames=Math.ceil(buf.duration*fps),out=[],win=new Float32Array(N),prev=new Float32Array(N/2);
+  for(let i=0;i<N;i++)win[i]=0.42-0.5*Math.cos(2*Math.PI*i/N)+0.08*Math.cos(4*Math.PI*i/N);
+  let peak=0.05,lvlS=0;const sens=+$("sens").value/5,hz=sr/N;
+  for(let f=0;f<frames;f++){
+    const st=Math.max(0,Math.floor(f/fps*sr)-N);const re=new Float32Array(N),im=new Float32Array(N);let s=0;
+    for(let i=0;i<N;i++){const v=mono[st+i]||0;s+=v*v;re[i]=v*win[i];}
+    const rms=Math.sqrt(s/N);fft(re,im);
+    const byte=new Float32Array(N/2);
+    for(let k=0;k<N/2;k++){const mag=Math.hypot(re[k],im[k])/N;prev[k]=prev[k]*0.35+mag*0.65;const db=20*Math.log10(prev[k]+1e-12);byte[k]=Math.max(0,Math.min(255,(db+100)/70*255));}
+    const band=(a,b)=>{let t=0,n=0;for(let k=Math.floor(a/hz);k<Math.min(N/2,b/hz);k++){t+=byte[k];n++}return t/Math.max(n,1)};
+    // peak follows the same decay as live mode (per ~16ms tick)
+    for(let k=0;k<2;k++)peak=Math.max(rms,peak*0.995,0.02);
+    const l=Math.min(1,rms/peak*0.9*sens);lvlS=lvlS*0.4+l*0.6;
+    out.push({lvl:lvlS,shape:pickShape(lvlS,band(80,450),band(450,1800),band(1800,6000))});
+  }
+  return out;
+}
+async function exportOffline(){
+  try{offline=true;return await exportOfflineInner();}finally{offline=false;}
+}
+async function exportOfflineInner(){
+  recording=true;$("export").disabled=true;$("play").disabled=true;
+  if(playing){audioEl.pause();playing=false;$("play").textContent="▶ Preview";}
+  status("Preparing… 🎬");
+  const {Muxer,ArrayBufferTarget}=await import("./lib/mp4-muxer.mjs");
+  const buf=await actx.decodeAudioData(await audioBlob.arrayBuffer());
+  const fps=30,W=cv.width,H=cv.height,sr=buf.sampleRate,nch=Math.min(2,buf.numberOfChannels);
+  let vcfg=null;
+  for(const codec of ["avc1.640033","avc1.4d0033","avc1.42003e","avc1.640028","avc1.42001f"]){
+    const c={codec,width:W,height:H,bitrate:8e6,framerate:fps,avc:{format:"avc"}};
+    try{if((await VideoEncoder.isConfigSupported(c)).supported){vcfg=c;break;}}catch(e){}
+  }
+  if(!vcfg)throw new Error("no H.264 encoder");
+  let acodec=null,acfg=null;
+  for(const [codec,name] of [["mp4a.40.2","aac"],["opus","opus"]]){
+    const c={codec,sampleRate:sr,numberOfChannels:nch,bitrate:128000};
+    try{if((await AudioEncoder.isConfigSupported(c)).supported){acfg=c;acodec=name;break;}}catch(e){}
+  }
+  if(!acfg)throw new Error("no audio encoder");
+  const target=new ArrayBufferTarget();
+  const muxer=new Muxer({target,video:{codec:"avc",width:W,height:H,frameRate:fps},audio:{codec:acodec,numberOfChannels:nch,sampleRate:sr},fastStart:"in-memory",firstTimestampBehavior:"offset"});
+  let encErr=null;
+  const ve=new VideoEncoder({output:(c,m)=>muxer.addVideoChunk(c,m),error:e=>encErr=e});ve.configure(vcfg);
+  const ae=new AudioEncoder({output:(c,m)=>muxer.addAudioChunk(c,m),error:e=>encErr=e});ae.configure(acfg);
+  // audio
+  const CH=1024;
+  for(let i=0;i<buf.length;i+=CH){
+    const n=Math.min(CH,buf.length-i),data=new Float32Array(n*nch);
+    for(let c=0;c<nch;c++)data.set(buf.getChannelData(c).subarray(i,i+n),c*n);
+    const ad=new AudioData({format:"f32-planar",sampleRate:sr,numberOfFrames:n,numberOfChannels:nch,timestamp:Math.round(i/sr*1e6),data});
+    ae.encode(ad);ad.close();
+  }
+  // video
+  const track=analyseBuffer(buf,fps),saved={...state};
+  let rnd=12345;const rand=()=>((rnd=(rnd*16807)%2147483647)/2147483647);
+  state.shape="rest";state.shapeT=0;state.blinkUntil=0;state.nextBlink=1.5+rand()*2;
+  for(let f=0;f<track.length;f++){
+    if(encErr)throw encErr;
+    const t=f/fps,{lvl,shape}=track[f];
+    if(shape!==state.shape&&t-state.shapeT>0.07){state.shape=shape;state.shapeT=t;}
+    if(t>state.nextBlink){state.blinkUntil=t+0.12;state.nextBlink=t+2+rand()*3.5;}
+    draw(t,lvl);
+    const vf=new VideoFrame(cv,{timestamp:Math.round(t*1e6),duration:Math.round(1e6/fps)});
+    ve.encode(vf,{keyFrame:f%60===0});vf.close();
+    while(ve.encodeQueueSize>8)await new Promise(r=>setTimeout(r,5));
+    if(f%15===0){status(`Making your video… ${Math.round(f/track.length*100)}%`);await new Promise(r=>setTimeout(r,0));}
+  }
+  await ve.flush();await ae.flush();if(encErr)throw encErr;
+  muxer.finalize();Object.assign(state,saved,{shape:"rest"});
+  const blob=new Blob([target.buffer],{type:"video/mp4"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`rigpop-talk-${cur}.mp4`;a.click();
+  status(`Done! Saved rigpop-talk-${cur}.mp4 (${buf.duration.toFixed(1)}s) 🎉`);
+  recording=false;$("export").disabled=false;$("play").disabled=false;
+}
 function stopRecording(){recording=false;setTimeout(()=>mr&&mr.state!=="inactive"&&mr.stop(),250);}
 function status(t){$("status").textContent=t}
 
 // --- lip sync ---
+function pickShape(L,lo,mid,hi){
+  if(L<0.16)return "rest";
+  if(hi>mid*1.0&&L<0.6)return "E";
+  if(lo>mid*1.7&&L>0.25&&L<0.6)return "O";
+  return L>0.38?"A":"E";
+}
 const fbuf=new Uint8Array(512),tbuf=new Uint8Array(1024);
 function analyse(dt){
   if(!analyser||!(playing||liveStream)){state.lvl*=0.8;return{lvl:state.lvl,shape:"rest"};}
@@ -199,17 +290,12 @@ function analyse(dt){
   state.lvl=state.lvl*0.4+lvl*0.6;
   const hz=actx.sampleRate/analyser.fftSize;const band=(a,b)=>{let t=0,n=0;for(let i=Math.floor(a/hz);i<Math.min(fbuf.length,b/hz);i++){t+=fbuf[i];n++}return t/Math.max(n,1)};
   const lo=band(80,450),mid=band(450,1800),hi=band(1800,6000);
-  let shape="rest";const L=state.lvl;
-  if(L>0.18){
-    if(hi>mid*0.9&&L<0.75)shape="E";
-    else if(lo>mid*1.35)shape="O";
-    else shape=L>0.45?"A":"E";
-  }
-  return{lvl:L,shape};
+  return{lvl:state.lvl,shape:pickShape(state.lvl,lo,mid,hi)};
 }
 
 let last=performance.now(),t0=last;
 function frame(now){
+  if(offline){last=now;requestAnimationFrame(frame);return;}
   const dt=Math.min(0.05,(now-last)/1000);last=now;const t=(now-t0)/1000;
   const {lvl,shape}=analyse(dt);
   $("meter").style.width=(lvl*100).toFixed(0)+"%";
@@ -255,7 +341,7 @@ function draw(t,lvl){
   const rot=(Math.sin(t*1.3)*0.012+Math.sin(t*7.3)*lvl*0.025)*bounce;
   const lift=Math.sin(t*1.7)*4+lvl*14*bounce;
   let bottom;
-  if(c.anchor==="bottom"){bottom=H+H*0.015-lift*0.4;}
+  if(c.anchor==="bottom"){bottom=H+c.h*s*0.07-lift*0.4;}
   else{bottom=H-(avail-c.h*s)*0.3-H*0.03;
     ctx.save();ctx.fillStyle="rgba(31,42,156,.16)";ctx.beginPath();ctx.ellipse(W/2,bottom-4,c.w*s*0.36*(1-lift/400),c.w*s*0.06,0,0,7);ctx.fill();ctx.restore();
     bottom-=lift;}
