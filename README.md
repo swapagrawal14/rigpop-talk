@@ -59,7 +59,7 @@ Switch it off any time in Style.
 
 1. Tap **＋ Your doodle** and pick a drawing. A plain background is removed automatically. Untick it if it eats part of your art.
 2. **Tap the mouth** (or drag a box over it), then tap both eyes so it can blink.
-3. **Tap both shoulders** for bendy cartoon arms in your doodle's own skin, sleeve, and ink colours:
+3. **Tap both shoulders** for bendy cartoon arms in your doodle's own skin and ink colours. Each arm tapers smoothly and starts *under* your drawing's own sleeve, so there is no puppet shoulder ball:
 
 <p align="center"><img src="docs/bendy-arms.png" alt="Bendy arms preview" width="90%"></p>
 
